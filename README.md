@@ -29,4 +29,16 @@ def my_func(arg1, arg2):
 ## Limitations
 Arguments and return types must be JSON serializable by default. You can override the serializer, but be careful with using Pickle. Make sure you understand the security risks.
 
+## API
+```
+RedisCache(redis_client, prefix="rc", serializer=dumps, deserializer=loads)
+
+RedisCache.cache(ttl=None, limit=None, namespace=None):
+```
+
+- prefix - The string to prefix the redis keys with
+- serializer/deserializer - functions to convert arguments and return value to a string (user JSON by default)
+- ttl - The time in seconds to cache the return value
+- namespace - The namespace of the cache. This is useful for allowing multiple functions to use the same cache. By default its `f'{function.__module__}.{function.__file__}'`
+
 
