@@ -33,12 +33,12 @@ Arguments and return types must be JSON serializable by default. You can overrid
 ```
 RedisCache(redis_client, prefix="rc", serializer=dumps, deserializer=loads)
 
-RedisCache.cache(ttl=None, limit=None, namespace=None):
+RedisCache.cache(ttl=None, limit=None, namespace=None)
 ```
 
 - prefix - The string to prefix the redis keys with
 - serializer/deserializer - functions to convert arguments and return value to a string (user JSON by default)
 - ttl - The time in seconds to cache the return value
-- namespace - The namespace of the cache. This is useful for allowing multiple functions to use the same cache. By default its `f'{function.__module__}.{function.__file__}'`
+- namespace - The string namespace of the cache. This is useful for allowing multiple functions to use the same cache. By default its `f'{function.__module__}.{function.__file__}'`
 
 
