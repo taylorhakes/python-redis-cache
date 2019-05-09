@@ -11,8 +11,32 @@ class RedisCache:
         self.prefix = prefix
         self.serialzer = serializer
         self.deserializer = deserializer
+        self.set_cache = None
 
-    def cache(self, ttl=None, limit=None, namespace=None):
+    def get_set_cache(self):
+        return self.client.register_script("""
+local ttl = tonumber(ARGV[2])
+local value
+if ttl > 0 then
+  value = redis.call('SETEX', KEYS[1], ttl, ARGV[1])
+else
+  value = redis.call('SET', KEYS[1], ARGV[1])
+end
+local limit = tonumber(ARGV[3])
+if limit > 0 then
+  local time = tonumber(redis.call('TIME')[1])
+  redis.call('ZADD', KEYS[2], time, KEYS[1])
+  local count = tonumber(redis.call('ZCOUNT', KEYS[2], '-inf', '+inf'))
+  local over = count - limit
+  if over > 0 then
+    local stale_keys = redis.call('ZPOPMIN', KEYS[2], over)
+    redis.call('ZREM', KEYS[2], unpack(stale_keys))
+  end
+end
+return value
+""")
+
+    def cache(self, ttl=0, limit=0, namespace=None):
         def decorator(fn):
             nonlocal namespace
             nonlocal ttl
@@ -24,38 +48,20 @@ class RedisCache:
             @wraps(fn)
             def inner(*args, **kwargs):
                 args_hash = str(b64encode(md5(self.serialzer([args, kwargs]).encode('utf-8')).digest()), 'utf-8')
-                key = f'{self.prefix}.{namespace}={args_hash}'
-                print('key', key)
+                key = f'{self.prefix}:{namespace}:{args_hash}'
+                keys_key = f'{self.prefix}:{namespace}:keys'
                 result = self.client.get(key)
+
+                print(result)
                 if not result:
                     result = fn(*args, **kwargs)
                     result_json = self.serialzer(result)
-                    pipe = self.client.pipeline()
-                    if ttl:
-                        pipe.setex(key, ttl, result_json)
-                    else:
-                        pipe.set(key, result_json)
-
-                    keys_key = f'{self.prefix}.{namespace}.keys'
-                    pipe.zadd(keys_key, {key: time()})
-                    pipe.execute()
-
-                    if limit:
-                        result_count = self.client.zcount(keys_key, '-inf', '+inf')
-                        over_limit = result_count - limit
-                        if over_limit > 0:
-                            stale_key_items = self.client.zpopmin(keys_key, over_limit)
-                            stale_keys = (key for key, score in stale_key_items)
-                            self.client.zrem(keys_key, *stale_keys)
-
+                    if not self.set_cache:
+                       self.set_cache = self.get_set_cache() 
+                    
+                    self.set_cache(keys=[key, keys_key], args=[result_json, ttl, limit])
                 else:
                     result = self.deserializer(result)
                 return result
-
             return inner
         return decorator
-
-
-
-        
-        
