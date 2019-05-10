@@ -29,8 +29,14 @@ if limit > 0 then
   local count = tonumber(redis.call('ZCOUNT', KEYS[2], '-inf', '+inf'))
   local over = count - limit
   if over > 0 then
-    local stale_keys = redis.call('ZPOPMIN', KEYS[2], over)
+    local stale_keys_and_scores = redis.call('ZPOPMIN', KEYS[2], over)
+    -- Remove the the scores and just leave the keys
+    local stale_keys = {}
+    for i = 1, #stale_keys_and_scores, 2 do
+      stale_keys[#stale_keys+1] = stale_keys_and_scores[i]
+    end
     redis.call('ZREM', KEYS[2], unpack(stale_keys))
+    redis.call('DEL', unpack(stale_keys))
   end
 end
 return value
@@ -52,7 +58,6 @@ return value
                 keys_key = f'{self.prefix}:{namespace}:keys'
                 result = self.client.get(key)
 
-                print(result)
                 if not result:
                     result = fn(*args, **kwargs)
                     result_json = self.serialzer(result)
