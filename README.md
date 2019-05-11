@@ -40,6 +40,17 @@ Arguments and return types must be JSON serializable by default. You can overrid
 RedisCache(redis_client, prefix="rc", serializer=dumps, deserializer=loads)
 
 RedisCache.cache(ttl=None, limit=None, namespace=None)
+
+# Cached function API
+
+# Returns a cached value, if it exists in cache. Saves values in cache if it doesn't exist
+cached_func(*args, *kwargs)
+
+# Invalidates a single value
+cached_func.invalidate(*args, **kwargs)
+
+# Invalidates all values for cached function
+cached_func.invalidate_all()
 ```
 
 - prefix - The string to prefix the redis keys with
