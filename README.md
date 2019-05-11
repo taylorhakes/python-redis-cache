@@ -32,8 +32,11 @@ my_func.invalidate(1, 2)
 my_func.invalidate_all()
 ```
 
-## Limitations
+## Limitations and things to know
 Arguments and return types must be JSON serializable by default. You can override the serializer, but be careful with using Pickle. Make sure you understand the security risks. Pickle should not be used with untrusted values.
+
+**ttl** - is based on the time from when it's first inserted in the cache, not based on the last access
+**limit** - The limit will revoke keys (once it hits the limit) based on FIFO, not based on LRU
 
 ## API
 ```python
