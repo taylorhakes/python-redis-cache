@@ -21,9 +21,14 @@ cache = RedisCache(redis_client=client)
 
 @cache.cache()
 def my_func(arg1, arg2):
-    # Some expensive operation
-    return 5
+    result = some_expensive_operation()
+    return result
 
+# Use the function
+my_func(1, 2)
+
+# Call it with the same arguments and it will use cache
+my_func(1, 2)
 
 # Invalidate a single value
 my_func.invalidate(1, 2)
