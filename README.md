@@ -24,10 +24,16 @@ def my_func(arg1, arg2):
     # Some expensive operation
     return 5
 
+
+# Invalidate a single value
+my_func.invalidate(1, 2)
+
+# Invalidate all values for function
+my_func.invalidate_all()
 ```
 
 ## Limitations
-Arguments and return types must be JSON serializable by default. You can override the serializer, but be careful with using Pickle. Make sure you understand the security risks.
+Arguments and return types must be JSON serializable by default. You can override the serializer, but be careful with using Pickle. Make sure you understand the security risks. Pickle should not be used with untrusted values.
 
 ## API
 ```
@@ -40,5 +46,3 @@ RedisCache.cache(ttl=None, limit=None, namespace=None)
 - serializer/deserializer - functions to convert arguments and return value to a string (user JSON by default)
 - ttl - The time in seconds to cache the return value
 - namespace - The string namespace of the cache. This is useful for allowing multiple functions to use the same cache. By default its `f'{function.__module__}.{function.__file__}'`
-
-
