@@ -27,7 +27,7 @@ def my_func(arg1, arg2):
 # Use the function
 my_func(1, 2)
 
-# Call it with the same arguments and it will use cache
+# Call it again with the same arguments and it will use cache
 my_func(1, 2)
 
 # Invalidate a single value
