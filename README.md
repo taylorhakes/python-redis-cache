@@ -36,7 +36,7 @@ my_func.invalidate_all()
 Arguments and return types must be JSON serializable by default. You can override the serializer, but be careful with using Pickle. Make sure you understand the security risks. Pickle should not be used with untrusted values.
 
 ## API
-```
+```python
 RedisCache(redis_client, prefix="rc", serializer=dumps, deserializer=loads)
 
 RedisCache.cache(ttl=None, limit=None, namespace=None)
