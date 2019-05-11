@@ -43,7 +43,7 @@ RedisCache.cache(ttl=None, limit=None, namespace=None)
 
 # Cached function API
 
-# Returns a cached value, if it exists in cache. Saves values in cache if it doesn't exist
+# Returns a cached value, if it exists in cache. Saves value in cache if it doesn't exist
 cached_func(*args, *kwargs)
 
 # Invalidates a single value
