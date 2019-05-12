@@ -1,7 +1,9 @@
 from redis import StrictRedis
 from redis_cache import RedisCache
 from mock import patch
+import pickle
 import pytest
+import base64
 
 client = StrictRedis(host='redis', decode_responses=True)
 
@@ -109,4 +111,39 @@ def test_invalidate_all():
     # Check all the keys were removed
     assert client.zrange('rc:redis_cache.test.add_invalidate_all:keys', 0, -1) == []
     assert client.exists('rc:redis_cache.test.add_invalidate_all:kqR3/pNVmT9wYGRqjLlq1w==', 'c:redis_cache.test.add_invalidate_all:nI4VRRx5stV01jmBXxCk0g==') == 0
-    
+
+class Result:
+    def __init__(self, arg1, arg2):
+        self.sum = arg1 + arg2
+
+class Arg:
+    def __init__(self, value):
+        self.value = value
+
+
+def test_custom_serializer():
+    def dumps(value):
+        return str(base64.b64encode(pickle.dumps(value)), 'utf-8')
+
+    def loads(value):
+        return pickle.loads(base64.b64decode(bytes(value, 'utf-8')))
+
+    cache = RedisCache(redis_client=client, serializer=dumps, deserializer=loads)
+
+    @cache.cache()
+    def add_custom_serializer(arg1, arg2):
+        return Result(
+            arg1.value,
+            arg2.value
+        )
+
+    result = add_custom_serializer(Arg(2), Arg(3))    
+    assert result.sum == 5
+
+    with patch.object(client, 'get', wraps=client.get) as mock_get:
+        result = add_custom_serializer(Arg(2), Arg(3))    
+        assert result.sum == 5
+        mock_get.assert_called_once_with('rc:redis_cache.test.add_custom_serializer:MZ0vCMkkSYVxMaMrTGf92Q==')
+
+    result = add_custom_serializer(Arg(5), Arg(5))
+    assert result.sum == 10
