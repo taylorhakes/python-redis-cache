@@ -4,8 +4,10 @@ from mock import patch
 import pickle
 import pytest
 import base64
+import zlib
 
 client = StrictRedis(host='redis', decode_responses=True)
+client_no_decode = StrictRedis(host='redis')
 
 @pytest.fixture(scope="session", autouse=True)
 def clear_redis(request):
@@ -122,13 +124,7 @@ class Arg:
 
 
 def test_custom_serializer():
-    def dumps(value):
-        return str(base64.b64encode(pickle.dumps(value)), 'utf-8')
-
-    def loads(value):
-        return pickle.loads(base64.b64decode(bytes(value, 'utf-8')))
-
-    cache = RedisCache(redis_client=client, serializer=dumps, deserializer=loads)
+    cache = RedisCache(redis_client=client_no_decode, serializer=pickle.dumps, deserializer=pickle.loads)
 
     @cache.cache()
     def add_custom_serializer(arg1, arg2):
@@ -140,10 +136,37 @@ def test_custom_serializer():
     result = add_custom_serializer(Arg(2), Arg(3))    
     assert result.sum == 5
 
-    with patch.object(client, 'get', wraps=client.get) as mock_get:
+    with patch.object(client_no_decode, 'get', wraps=client_no_decode.get) as mock_get:
         result = add_custom_serializer(Arg(2), Arg(3))    
         assert result.sum == 5
-        mock_get.assert_called_once_with('rc:redis_cache.test.add_custom_serializer:MZ0vCMkkSYVxMaMrTGf92Q==')
+        mock_get.assert_called_once_with('rc:redis_cache.test.add_custom_serializer:ylu4FLF4Rqm1KhwEugegHA==')
+
+    result = add_custom_serializer(Arg(5), Arg(5))
+    assert result.sum == 10
+
+def test_custom_serializer_with_compress():
+    def dumps(value):
+        return zlib.compress(pickle.dumps(value))
+
+    def loads(value):
+        return pickle.loads(zlib.decompress(value))
+
+    cache = RedisCache(redis_client=client_no_decode, serializer=dumps, deserializer=loads)
+
+    @cache.cache()
+    def add_custom_serializer(arg1, arg2):
+        return Result(
+            arg1.value,
+            arg2.value
+        )
+
+    result = add_custom_serializer(Arg(2), Arg(3))    
+    assert result.sum == 5
+
+    with patch.object(client_no_decode, 'get', wraps=client_no_decode.get) as mock_get:
+        result = add_custom_serializer(Arg(2), Arg(3))    
+        assert result.sum == 5
+        mock_get.assert_called_once_with('rc:redis_cache.test.add_custom_serializer:XveJdakWYFw/go1CK7rL+A==')
 
     result = add_custom_serializer(Arg(5), Arg(5))
     assert result.sum == 10

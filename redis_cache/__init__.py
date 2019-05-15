@@ -68,7 +68,11 @@ class CacheDecorator:
         self.keys_key = None
 
     def get_key(self, args, kwargs):
-        args_hash = str(b64encode(md5(self.serializer([args, kwargs]).encode('utf-8')).digest()), 'utf-8')
+        serialized_data = self.serializer([args, kwargs])
+        if isinstance(serialized_data, str):
+            serialized_data = serialized_data.encode('utf-8')
+
+        args_hash = str(b64encode(md5(serialized_data).digest()), 'utf-8')
         return f'{self.prefix}:{self.namespace}:{args_hash}'
 
     def __call__(self, fn):
@@ -82,8 +86,8 @@ class CacheDecorator:
             result = self.client.get(key)
             if not result:
                 result = fn(*args, **kwargs)
-                result_json = self.serializer(result)
-                get_cache_lua_fn(self.client)(keys=[key, self.keys_key], args=[result_json, self.ttl, self.limit])
+                result_serialized = self.serializer(result)
+                get_cache_lua_fn(self.client)(keys=[key, self.keys_key], args=[result_serialized, self.ttl, self.limit])
             else:
                 result = self.deserializer(result)
             return result
