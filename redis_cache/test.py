@@ -25,7 +25,7 @@ def test_basic_check():
 
     with patch.object(client, 'get', wraps=client.get) as mock_get:
         result = add_basic(3, 4)
-        mock_get.assert_called_once_with('rc:redis_cache.test.add_basic:nI4VRRx5stV01jmBXxCk0g==')
+        mock_get.assert_called_once_with('rc:redis_cache.test.add_basic:[[3, 4], {}]')
     assert result == 7
 
     result = add_basic(5, 5)
@@ -64,11 +64,11 @@ def test_limit():
 
     result = add_limit(6, 5)
     assert result == 11
-    assert client.zrange('rc:redis_cache.test.add_limit:keys', 0, -1) == ['rc:redis_cache.test.add_limit:xNLCe8YInyx9Ab+8SVpHPg==', 'rc:redis_cache.test.add_limit:tGuG3MhBSir5Nid98G4XAg==']
+    assert client.zrange('rc:redis_cache.test.add_limit:keys', 0, -1) == ['rc:redis_cache.test.add_limit:[[5, 5], {}]', 'rc:redis_cache.test.add_limit:[[6, 5], {}]']
 
     result = add_limit(3, 4)  
     assert result == 7
-    assert client.zrange('rc:redis_cache.test.add_limit:keys', 0, -1) == ['rc:redis_cache.test.add_limit:tGuG3MhBSir5Nid98G4XAg==', 'rc:redis_cache.test.add_limit:nI4VRRx5stV01jmBXxCk0g==']
+    assert client.zrange('rc:redis_cache.test.add_limit:keys', 0, -1) == ['rc:redis_cache.test.add_limit:[[6, 5], {}]', 'rc:redis_cache.test.add_limit:[[3, 4], {}]']
 
 def test_invalidate_not_in_cache():
     cache = RedisCache(redis_client=client)
@@ -81,9 +81,9 @@ def test_invalidate_not_in_cache():
     add_invalidate_not_in_cache(4, 4)
     add_invalidate_not_in_cache.invalidate(5, 5)
 
-    assert client.zrange('rc:redis_cache.test.add_invalidate_not_in_cache:keys', 0, -1) == ['rc:redis_cache.test.add_invalidate_not_in_cache:nI4VRRx5stV01jmBXxCk0g==', 'rc:redis_cache.test.add_invalidate_not_in_cache:kqR3/pNVmT9wYGRqjLlq1w==']
-    assert client.get('rc:redis_cache.test.add_invalidate_not_in_cache:nI4VRRx5stV01jmBXxCk0g==') == '7'
-    assert client.get('rc:redis_cache.test.add_invalidate_not_in_cache:kqR3/pNVmT9wYGRqjLlq1w==') == '8'
+    assert client.zrange('rc:redis_cache.test.add_invalidate_not_in_cache:keys', 0, -1) == ['rc:redis_cache.test.add_invalidate_not_in_cache:[[3, 4], {}]', 'rc:redis_cache.test.add_invalidate_not_in_cache:[[4, 4], {}]']
+    assert client.get('rc:redis_cache.test.add_invalidate_not_in_cache:[[3, 4], {}]') == '7'
+    assert client.get('rc:redis_cache.test.add_invalidate_not_in_cache:[[4, 4], {}]') == '8'
 def test_invalidate_in_cache():
     cache = RedisCache(redis_client=client)
 
@@ -93,11 +93,14 @@ def test_invalidate_in_cache():
 
     add_invalidate_in_cache(3, 4)
     add_invalidate_in_cache(4, 4)
+    assert client.zrange('rc:redis_cache.test.add_invalidate_in_cache:keys', 0, -1) == ['rc:redis_cache.test.add_invalidate_in_cache:[[3, 4], {}]', 'rc:redis_cache.test.add_invalidate_in_cache:[[4, 4], {}]']
+
+
     add_invalidate_in_cache.invalidate(4, 4)
 
-    assert client.zrange('rc:redis_cache.test.add_invalidate_in_cache:keys', 0, -1) == ['rc:redis_cache.test.add_invalidate_in_cache:nI4VRRx5stV01jmBXxCk0g==']
-    assert client.get('rc:redis_cache.test.add_invalidate_in_cache:nI4VRRx5stV01jmBXxCk0g==') == '7'
-    assert client.exists('rc:redis_cache.test.add_invalidate_in_cache:kqR3/pNVmT9wYGRqjLlq1w==') == 0
+    assert client.zrange('rc:redis_cache.test.add_invalidate_in_cache:keys', 0, -1) == ['rc:redis_cache.test.add_invalidate_in_cache:[[3, 4], {}]']
+    assert client.get('rc:redis_cache.test.add_invalidate_in_cache:[[3, 4], {}]') == '7'
+    assert client.exists('rc:redis_cache.test.add_invalidate_in_cache:[[4, 4], {}]') == 0
 
 def test_invalidate_all():
     cache = RedisCache(redis_client=client)
@@ -108,11 +111,11 @@ def test_invalidate_all():
 
     add_invalidate_all(3, 4)
     add_invalidate_all(4, 4)
-    assert client.zrange('rc:redis_cache.test.add_invalidate_all:keys', 0, -1) == ['rc:redis_cache.test.add_invalidate_all:nI4VRRx5stV01jmBXxCk0g==', 'rc:redis_cache.test.add_invalidate_all:kqR3/pNVmT9wYGRqjLlq1w==']
+    assert client.zrange('rc:redis_cache.test.add_invalidate_all:keys', 0, -1) == ['rc:redis_cache.test.add_invalidate_all:[[3, 4], {}]', 'rc:redis_cache.test.add_invalidate_all:[[4, 4], {}]']
     add_invalidate_all.invalidate_all()
     # Check all the keys were removed
     assert client.zrange('rc:redis_cache.test.add_invalidate_all:keys', 0, -1) == []
-    assert client.exists('rc:redis_cache.test.add_invalidate_all:kqR3/pNVmT9wYGRqjLlq1w==', 'c:redis_cache.test.add_invalidate_all:nI4VRRx5stV01jmBXxCk0g==') == 0
+    assert client.exists('rc:redis_cache.test.add_invalidate_all:[[3, 4], {}]', 'rc:redis_cache.test.add_invalidate_all:[[4, 4], {}]') == 0
 
 class Result:
     def __init__(self, arg1, arg2):
@@ -139,7 +142,7 @@ def test_custom_serializer():
     with patch.object(client_no_decode, 'get', wraps=client_no_decode.get) as mock_get:
         result = add_custom_serializer(Arg(2), Arg(3))    
         assert result.sum == 5
-        mock_get.assert_called_once_with('rc:redis_cache.test.add_custom_serializer:ylu4FLF4Rqm1KhwEugegHA==')
+        mock_get.assert_called_once_with('rc:redis_cache.test.add_custom_serializer:gANdcQAoY3JlZGlzX2NhY2hlLnRlc3QKQXJnCnEBKYFxAn1xA1gFAAAAdmFsdWVxBEsCc2JoASmBcQV9cQZoBEsDc2KGcQd9cQhlLg==')
 
     result = add_custom_serializer(Arg(5), Arg(5))
     assert result.sum == 10
@@ -166,7 +169,7 @@ def test_custom_serializer_with_compress():
     with patch.object(client_no_decode, 'get', wraps=client_no_decode.get) as mock_get:
         result = add_custom_serializer(Arg(2), Arg(3))    
         assert result.sum == 5
-        mock_get.assert_called_once_with('rc:redis_cache.test.add_custom_serializer:XveJdakWYFw/go1CK7rL+A==')
+        mock_get.assert_called_once_with('rc:redis_cache.test.add_custom_serializer:eJxrYI4tZNBILkpNySyOT05MzkjVK0ktLuFyLErnKmTUbCxkqi1kjmBlYGAoS8wpTS1k8WYqTsoASbDWFrJlsHgzFye1FbLXFnKk6gEAgloWhw==')
 
     result = add_custom_serializer(Arg(5), Arg(5))
     assert result.sum == 10

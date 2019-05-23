@@ -69,11 +69,10 @@ class CacheDecorator:
 
     def get_key(self, args, kwargs):
         serialized_data = self.serializer([args, kwargs])
-        if isinstance(serialized_data, str):
-            serialized_data = serialized_data.encode('utf-8')
 
-        args_hash = str(b64encode(md5(serialized_data).digest()), 'utf-8')
-        return f'{self.prefix}:{self.namespace}:{args_hash}'
+        if not isinstance(serialized_data, str):
+            serialized_data = str(b64encode(serialized_data), 'utf-8')
+        return f'{self.prefix}:{self.namespace}:{serialized_data}'
 
     def __call__(self, fn):
         self.namespace = self.namespace if self.namespace else f'{fn.__module__}.{fn.__name__}'
