@@ -189,7 +189,9 @@ def test_basic_mget():
 
     with patch.object(client, 'mget', wraps=client.mget) as mock_get:
         results = cache.mget(
+            dict(fn=add_basic_get, args=(10, 2)),
             dict(fn=add_basic_get, args=(3, 4)),
-            dict(fn=add_basic_get, args=(5, 2))
         )
-        mock_get.assert_called_once_with('rc:redis_cache.test.add_basic_get:[[3, 4], {}]', 'rc:redis_cache.test.add_basic_get:[[5, 2], {}]')
+        mock_get.assert_called_once_with('rc:redis_cache.test.add_basic_get:[[10, 2], {}]', 'rc:redis_cache.test.add_basic_get:[[3, 4], {}]')
+        assert results[0] == 12
+        assert results[1] == 7
