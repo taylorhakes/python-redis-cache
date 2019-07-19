@@ -55,6 +55,37 @@ class RedisCache:
             namespace=namespace
         )
 
+    def mget(self, *fns_with_args):
+        keys = []
+        for fn_and_args in fns_with_args:
+            fn = fn_and_args['fn']
+            args = fn_and_args['args'] if 'args' in fn_and_args else []
+            kwargs = fn_and_args['kwargs'] if 'kwargs' in fn_and_args else {}
+            keys.append(fn.instance.get_key(args=args, kwargs=kwargs))
+
+        results = self.client.mget(*keys)
+        pipeline = self.client.pipeline()
+
+        deserialized_results = []
+        needs_pipeline = False
+        for i, result in enumerate(results):
+            if result is None:
+                needs_pipeline = True
+
+                fn_and_args = fns_with_args[i]
+                fn = fn_and_args['fn']
+                args = fn_and_args['args'] if 'args' in fn_and_args else []
+                kwargs = fn_and_args['kwargs'] if 'kwargs' in fn_and_args else {}
+                result = fn(*args, **kwargs)
+                result_serialized = self.serializer(result)
+                get_cache_lua_fn(self.client)(keys=[keys[i], fn.instance.keys_key], args=[result_serialized, fn.instance.ttl, fn.instance.limit], client=pipeline)
+            else:
+                result = self.deserializer(result)
+            deserialized_results.append(result)
+
+        if needs_pipeline: 
+            pipeline.execute()
+        return deserialized_results
 
 class CacheDecorator:
     def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, ttl=0, limit=0, namespace=None):
@@ -93,6 +124,7 @@ class CacheDecorator:
 
         inner.invalidate = self.invalidate
         inner.invalidate_all = self.invalidate_all
+        inner.instance = self
         return inner
 
     def invalidate(self, *args, **kwargs):
@@ -101,6 +133,7 @@ class CacheDecorator:
         pipe.delete(key)
         pipe.zrem(self.keys_key, key)
         pipe.execute()
+
 
     def invalidate_all(self, *args, **kwargs):
         all_keys = self.client.zrange(self.keys_key, 0, -1)

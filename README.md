@@ -15,7 +15,7 @@ pip install python-redis-cache
 from redis import StrictRedis
 from redis_cache import RedisCache
 
-redis_client = StrictRedis(host="redis", decode_responses=True)
+client = StrictRedis(host="redis", decode_responses=True)
 cache = RedisCache(redis_client=client)
 
 
