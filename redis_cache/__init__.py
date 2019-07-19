@@ -76,7 +76,7 @@ class RedisCache:
                 fn = fn_and_args['fn']
                 args = fn_and_args['args'] if 'args' in fn_and_args else []
                 kwargs = fn_and_args['kwargs'] if 'kwargs' in fn_and_args else {}
-                result = fn(*args, **kwargs)
+                result = fn.instance.original_fn(*args, **kwargs)
                 result_serialized = self.serializer(result)
                 get_cache_lua_fn(self.client)(keys=[keys[i], fn.instance.keys_key], args=[result_serialized, fn.instance.ttl, fn.instance.limit], client=pipeline)
             else:
@@ -108,6 +108,7 @@ class CacheDecorator:
     def __call__(self, fn):
         self.namespace = self.namespace if self.namespace else f'{fn.__module__}.{fn.__name__}'
         self.keys_key = f'{self.prefix}:{self.namespace}:keys'
+        self.original_fn = fn
 
         @wraps(fn)
         def inner(*args, **kwargs):
