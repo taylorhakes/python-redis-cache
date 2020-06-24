@@ -66,3 +66,5 @@ cached_func.invalidate_all()
 - serializer/deserializer - functions to convert arguments and return value to a string (user JSON by default)
 - ttl - The time in seconds to cache the return value
 - namespace - The string namespace of the cache. This is useful for allowing multiple functions to use the same cache. By default its `f'{function.__module__}.{function.__file__}'`
+
+If serialising a method of a class, set `has_self` to `True` in order to not include the class instance allowing for functionality across instances.

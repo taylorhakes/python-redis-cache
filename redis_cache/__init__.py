@@ -44,7 +44,7 @@ class RedisCache:
         self.serializer = serializer
         self.deserializer = deserializer
 
-    def cache(self, ttl=0, limit=0, namespace=None):
+    def cache(self, ttl=0, limit=0, namespace=None, has_self=False):
         return CacheDecorator(
             redis_client=self.client,
             prefix=self.prefix,
@@ -52,7 +52,8 @@ class RedisCache:
             deserializer=self.deserializer,
             ttl=ttl,
             limit=limit,
-            namespace=namespace
+            namespace=namespace,
+            has_self=has_self,
         )
 
     def mget(self, *fns_with_args):
@@ -88,7 +89,7 @@ class RedisCache:
         return deserialized_results
 
 class CacheDecorator:
-    def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, ttl=0, limit=0, namespace=None):
+    def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, ttl=0, limit=0, namespace=None, has_self=False):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
@@ -97,8 +98,11 @@ class CacheDecorator:
         self.limit = limit
         self.namespace = namespace
         self.keys_key = None
+        self.has_self = has_self
 
     def get_key(self, args, kwargs):
+        if self.has_self:
+            args = args[1:]
         serialized_data = self.serializer([args, kwargs])
 
         if not isinstance(serialized_data, str):
