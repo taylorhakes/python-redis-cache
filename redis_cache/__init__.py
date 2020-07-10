@@ -98,16 +98,19 @@ class CacheDecorator:
         self.namespace = namespace
         self.keys_key = None
 
+    def _build_cache_key(self, prefix, namespace):
+        return f'{self.prefix}:{self.namespace}:keys'
+
     def get_key(self, args, kwargs):
         serialized_data = self.serializer([args, kwargs])
 
         if not isinstance(serialized_data, str):
             serialized_data = str(b64encode(serialized_data), 'utf-8')
-        return f'{self.prefix}:{self.namespace}:{serialized_data}'
+        return f'{self._build_cache_key(self.prefix, self.namespace)}:{serialized_data}'
 
     def __call__(self, fn):
         self.namespace = self.namespace if self.namespace else f'{fn.__module__}.{fn.__name__}'
-        self.keys_key = f'{self.prefix}:{self.namespace}:keys'
+        self.keys_key = self._build_cache_key(self.prefix, self.namespace)
         self.original_fn = fn
 
         @wraps(fn)
