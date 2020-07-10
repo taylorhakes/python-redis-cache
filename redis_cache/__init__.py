@@ -137,5 +137,5 @@ class CacheDecorator:
 
 
     def invalidate_all(self, *args, **kwargs):
-        all_keys = self.client.zrange(self.keys_key, 0, -1)
+        all_keys = self.client.keys(self.keys_key + '*')
         self.client.delete(*all_keys, self.keys_key)
