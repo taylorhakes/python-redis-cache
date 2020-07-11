@@ -168,7 +168,6 @@ class Result:
 class Arg:
     def __init__(self, value):
         self.value = value
-        self.verifier = str(uuid.uuid4())
 
 
 def test_custom_serializer(clear_cache):
@@ -188,7 +187,7 @@ def test_custom_serializer(clear_cache):
     assert r1.sum == r2.sum and r1.verifier == r2.verifier
 
 
-def _test_custom_serializer_with_compress():
+def test_custom_serializer_with_compress(clear_cache):
     def dumps(value):
         return zlib.compress(pickle.dumps(value))
 
@@ -196,47 +195,25 @@ def _test_custom_serializer_with_compress():
         return pickle.loads(zlib.decompress(value))
 
     cache = RedisCache(
-        redis_client=client_no_decode, serializer=dumps, deserializer=loads
+        redis_client=client_no_decode, serializer=dumps, deserializer=loads,
     )
 
     @cache.cache()
-    def add_custom_serializer(arg1, arg2):
+    def add_compress_serializer(arg1, arg2):
         return Result(arg1.value, arg2.value)
 
-    result = add_custom_serializer(Arg(2), Arg(3))
-    assert result.sum == 5
+    r1 = add_compress_serializer(Arg(2), Arg(3))
+    r2 = add_compress_serializer(Arg(2), Arg(3))
 
-    with patch.object(
-        client_no_decode, "get", wraps=client_no_decode.get
-    ) as mock_get:
-        result = add_custom_serializer(Arg(2), Arg(3))
-        assert result.sum == 5
-        mock_get.assert_called_once_with(
-            "rc:redis_cache.test.add_custom_serializer:keys:eJxrYI4tZNBILkpNySyOT05MzkjVK0ktLuFyLErnKmTUbCxkqi1kjmBlYGAoS8wpTS1k8WYqTsoASbDWFrJlsHgzFye1FbLXFnKk6gEAgloWhw=="
-        )
-
-    result = add_custom_serializer(Arg(5), Arg(5))
-    assert result.sum == 10
+    assert r1.sum == r2.sum and r1.verifier == r2.verifier
 
 
-def _test_basic_mget():
-    cache = RedisCache(redis_client=client)
-
+def test_basic_mget(cache):
     @cache.cache()
     def add_basic_get(arg1, arg2):
-        return arg1 + arg2
+        return add_func(arg1, arg2)
 
-    results = cache.mget(dict(fn=add_basic_get, args=(3, 4)))
-    assert results[0] == 7
+    r_3_4, v_3_4 = cache.mget({"fn": add_basic_get, "args": (3, 4)})[0]
+    r2_3_4, v2_3_4 = add_basic_get(3, 4)
 
-    with patch.object(client, "mget", wraps=client.mget) as mock_get:
-        results = cache.mget(
-            dict(fn=add_basic_get, args=(10, 2)),
-            dict(fn=add_basic_get, args=(3, 4)),
-        )
-        mock_get.assert_called_once_with(
-            "rc:redis_cache.test.add_basic_get:keys:[[10, 2], {}]",
-            "rc:redis_cache.test.add_basic_get:keys:[[3, 4], {}]",
-        )
-        assert results[0] == 12
-        assert results[1] == 7
+    assert r_3_4 == r2_3_4 and v_3_4 == v2_3_4
