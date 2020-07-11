@@ -83,7 +83,7 @@ class RedisCache:
                 result = self.deserializer(result)
             deserialized_results.append(result)
 
-        if needs_pipeline: 
+        if needs_pipeline:
             pipeline.execute()
         return deserialized_results
 
@@ -140,5 +140,5 @@ class CacheDecorator:
 
 
     def invalidate_all(self, *args, **kwargs):
-        all_keys = self.client.zrange(self.keys_key, 0, -1)
+        all_keys = self.client.keys(self.keys_key + '*')
         self.client.delete(*all_keys, self.keys_key)
