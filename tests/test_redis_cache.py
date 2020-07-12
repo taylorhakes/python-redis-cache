@@ -14,13 +14,13 @@ client = StrictRedis(host=redis_host, decode_responses=True)
 client_no_decode = StrictRedis(host=redis_host)
 
 
-@pytest.fixture()
-def clear_cache():
+@pytest.fixture(scope="session", autouse=True)
+def clear_cache(request):
     client.flushall()
 
 
 @pytest.fixture()
-def cache(clear_cache):
+def cache():
     return RedisCache(redis_client=client)
 
 
@@ -170,7 +170,7 @@ class Arg:
         self.value = value
 
 
-def test_custom_serializer(clear_cache):
+def test_custom_serializer():
     cache = RedisCache(
         redis_client=client_no_decode,
         serializer=pickle.dumps,
@@ -187,7 +187,7 @@ def test_custom_serializer(clear_cache):
     assert r1.sum == r2.sum and r1.verifier == r2.verifier
 
 
-def test_custom_serializer_with_compress(clear_cache):
+def test_custom_serializer_with_compress():
     def dumps(value):
         return zlib.compress(pickle.dumps(value))
 

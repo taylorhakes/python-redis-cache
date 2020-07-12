@@ -98,19 +98,16 @@ class CacheDecorator:
         self.namespace = namespace
         self.keys_key = None
 
-    def _build_cache_key(self, prefix, namespace):
-        return f'{self.prefix}:{self.namespace}:keys'
-
     def get_key(self, args, kwargs):
         serialized_data = self.serializer([args, kwargs])
 
         if not isinstance(serialized_data, str):
             serialized_data = str(b64encode(serialized_data), 'utf-8')
-        return f'{self._build_cache_key(self.prefix, self.namespace)}:{serialized_data}'
+        return f'{self.prefix}:{self.namespace}:{serialized_data}'
 
     def __call__(self, fn):
         self.namespace = self.namespace if self.namespace else f'{fn.__module__}.{fn.__name__}'
-        self.keys_key = self._build_cache_key(self.prefix, self.namespace)
+        self.keys_key = f'{self.prefix}:{self.namespace}:keys'
         self.original_fn = fn
 
         @wraps(fn)
@@ -122,6 +119,9 @@ class CacheDecorator:
                 result = fn(*args, **kwargs)
                 result_serialized = self.serializer(result)
                 get_cache_lua_fn(self.client)(keys=[key, self.keys_key], args=[result_serialized, self.ttl, self.limit])
+
+                score = self.client.zcount(self.keys_key, 0, -1)
+                self.client.zadd(self.keys_key, {key: score})
             else:
                 result = self.deserializer(result)
             return result
@@ -140,5 +140,5 @@ class CacheDecorator:
 
 
     def invalidate_all(self, *args, **kwargs):
-        all_keys = self.client.keys(self.keys_key + '*')
+        all_keys = self.client.zrange(self.keys_key, 0, -1)
         self.client.delete(*all_keys, self.keys_key)
