@@ -12,4 +12,4 @@ services:
       - redis-test-host
 
   redis-test-host:
-    image: redis:6
+    image: redis:${REDIS_VERSION:-5}
