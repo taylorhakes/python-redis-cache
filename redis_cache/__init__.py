@@ -138,9 +138,6 @@ class CacheDecorator:
                 result = fn(*args, **kwargs)
                 result_serialized = self.serializer(result)
                 get_cache_lua_fn(self.client)(keys=[key, self.keys_key], args=[result_serialized, self.ttl, self.limit])
-
-                score = self.client.zcount(self.keys_key, 0, -1)
-                self.client.zadd(self.keys_key, {key: score})
             else:
                 result = self.deserializer(result)
             return result
