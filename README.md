@@ -1,3 +1,8 @@
+[![CI](https://github.com/taylorhakes/python-redis-cache/workflows/CI/badge.svg?event=push)](https://github.com/taylorhakes/python-redis-cache/actions?query=event%3Apush+branch%3Amaster+workflow%3ACI)
+[![pypi](https://img.shields.io/pypi/v/python-redis-cache.svg)](https://pypi.python.org/pypi/python-redis-cache)
+[![versions](https://img.shields.io/pypi/pyversions/python-redis-cache.svg)](https://github.com/taylorhakes/python-redis-cache)
+[![license](https://img.shields.io/github/license/taylorhakes/python-redis-cache.svg)](https://github.com/taylorhakes/python-redis-cache/blob/master/LICENSE)
+
 # python-redis-cache
 Simple redis cache for Python functions
 

@@ -37,6 +37,25 @@ return value
 """)
     return client._lua_cache_fn
 
+
+# Utility function to batch keys
+def chunks(iterable, n):
+    """Yield successive n-sized chunks from iterator."""
+    _iterable = iter(iterable)
+    while True:
+        elements = []
+        for _ in range(n):
+            try:
+                elements.append(next(_iterable))
+            except StopIteration:
+                break
+
+        if not len(elements):
+            break
+
+        yield elements
+
+
 class RedisCache:
     def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads):
         self.client = redis_client
@@ -83,7 +102,7 @@ class RedisCache:
                 result = self.deserializer(result)
             deserialized_results.append(result)
 
-        if needs_pipeline: 
+        if needs_pipeline:
             pipeline.execute()
         return deserialized_results
 
@@ -135,7 +154,7 @@ class CacheDecorator:
         pipe.zrem(self.keys_key, key)
         pipe.execute()
 
-
     def invalidate_all(self, *args, **kwargs):
-        all_keys = self.client.zrange(self.keys_key, 0, -1)
-        self.client.delete(*all_keys, self.keys_key)
+        chunks_gen = chunks(self.client.scan_iter(f'{self.prefix}:{self.namespace}:*'), 500)
+        for keys in chunks_gen:
+            self.client.delete(*keys)

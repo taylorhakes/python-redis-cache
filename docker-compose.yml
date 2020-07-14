@@ -1,12 +1,15 @@
-version: '3'
+version: '3.7'
 services:
   test:
-    image: python:3.6.8
+    image: python:${PY_VERSION:-3.6.8}
     volumes:
-    - .:/python
-    command: python setup.py test
+      - .:/python
+    command: ${TEST_COMMAND:-python setup.py test}
+    stdin_open: true
+    tty: true
     working_dir: /python
     depends_on:
-      - redis
-  redis:
-    image: redis
+      - redis-test-host
+
+  redis-test-host:
+    image: redis:${REDIS_VERSION:-5}
