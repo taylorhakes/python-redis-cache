@@ -1,7 +1,5 @@
 from functools import wraps
-from hashlib import md5
 from json import dumps, loads
-from time import time
 from base64 import b64encode
 
 
