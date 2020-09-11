@@ -40,6 +40,12 @@ my_func.invalidate(1, 2)
 
 # Invalidate all values for function
 my_func.invalidate_all()
+
+# flush cache
+@cache.cache(flush_only=True, namespace='the cache')
+def update_cache(arg1):
+    result = 'latest value'
+    return result
 ```
 
 ## Limitations and things to know

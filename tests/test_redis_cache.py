@@ -217,3 +217,18 @@ def test_basic_mget(cache):
     r2_3_4, v2_3_4 = add_basic_get(3, 4)
 
     assert r_3_4 == r2_3_4 and v_3_4 == v2_3_4
+
+
+def test_flush_only(cache):
+    @cache.cache(flush_only=True)
+    def update_cache(arg1, arg2):
+        return add_func(arg1, arg2)
+
+    r_3_4_a, v_3_4_a = update_cache(3, 4)
+    r_3_4_b, v_3_4_b = update_cache(3, 4)
+    r_3_4, v_3_4 = cache.mget({"fn": update_cache, "args": (3, 4)})[0]
+    assert r_3_4_b == r_3_4
+    assert v_3_4_a != v_3_4_b
+
+
+

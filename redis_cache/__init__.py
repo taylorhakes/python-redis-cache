@@ -61,7 +61,7 @@ class RedisCache:
         self.serializer = serializer
         self.deserializer = deserializer
 
-    def cache(self, ttl=0, limit=0, namespace=None):
+    def cache(self, ttl=0, limit=0, namespace=None, flush_only=False):
         return CacheDecorator(
             redis_client=self.client,
             prefix=self.prefix,
@@ -69,7 +69,8 @@ class RedisCache:
             deserializer=self.deserializer,
             ttl=ttl,
             limit=limit,
-            namespace=namespace
+            namespace=namespace,
+            flush_only=flush_only
         )
 
     def mget(self, *fns_with_args):
@@ -105,7 +106,7 @@ class RedisCache:
         return deserialized_results
 
 class CacheDecorator:
-    def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, ttl=0, limit=0, namespace=None):
+    def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, ttl=0, limit=0, namespace=None, flush_only=False):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
@@ -114,6 +115,7 @@ class CacheDecorator:
         self.limit = limit
         self.namespace = namespace
         self.keys_key = None
+        self.flush_only = flush_only
 
     def get_key(self, args, kwargs):
         serialized_data = self.serializer([args, kwargs])
@@ -131,6 +133,11 @@ class CacheDecorator:
         def inner(*args, **kwargs):
             nonlocal self
             key = self.get_key(args, kwargs)
+            if self.flush_only:
+                result = fn(*args, **kwargs)
+                result_serialized = self.serializer(result)
+                get_cache_lua_fn(self.client)(keys=[key, self.keys_key], args=[result_serialized, self.ttl, self.limit])
+                return result
             result = self.client.get(key)
             if not result:
                 result = fn(*args, **kwargs)
