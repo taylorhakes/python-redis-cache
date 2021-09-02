@@ -1,0 +1,23 @@
+name: Semantic Release
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    concurrency: release
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GH_TOKEN }}
+
+    - name: Python Semantic Release
+      uses: taylorhakes/python-semantic-release
+      with:
+        github_token: ${{ secrets.GH_TOKEN }}
+        pypi_token: ${{ secrets.PYPI_TOKEN }}
