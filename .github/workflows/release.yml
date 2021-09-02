@@ -17,7 +17,7 @@ jobs:
         token: ${{ secrets.GH_TOKEN }}
 
     - name: Python Semantic Release
-      uses: taylorhakes/python-semantic-release
+      uses: taylorhakes/python-semantic-release@master
       with:
         github_token: ${{ secrets.GH_TOKEN }}
         pypi_token: ${{ secrets.PYPI_TOKEN }}
