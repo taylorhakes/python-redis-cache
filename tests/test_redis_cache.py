@@ -207,6 +207,27 @@ def test_custom_serializer_with_compress():
 
     assert r1.sum == r2.sum and r1.verifier == r2.verifier
 
+def test_custom_key_serializer():
+    def key_serializer(args, kwargs):
+        return f'{args}.{kwargs}'
+
+    cache = RedisCache(
+        redis_client=client_no_decode,
+        serializer=pickle.dumps,
+        deserializer=pickle.loads,
+        key_serializer=key_serializer
+    )
+
+    @cache.cache()
+    def add_custom_key_serializer(arg1, arg2):
+        return arg1 + arg2
+
+    r1 = add_custom_key_serializer(2, 3)
+    r2 = add_custom_key_serializer(2, 3)
+
+    assert r1 == r2
+    assert client.exists('rc:test_redis_cache.add_custom_key_serializer:(2, 3).{}')
+
 
 def test_basic_mget(cache):
     @cache.cache()

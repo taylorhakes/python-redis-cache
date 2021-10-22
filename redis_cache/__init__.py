@@ -55,11 +55,12 @@ def chunks(iterable, n):
 
 
 class RedisCache:
-    def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads):
+    def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, key_serializer=None):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
         self.deserializer = deserializer
+        self.key_serializer = key_serializer
 
     def cache(self, ttl=0, limit=0, namespace=None):
         return CacheDecorator(
@@ -67,6 +68,7 @@ class RedisCache:
             prefix=self.prefix,
             serializer=self.serializer,
             deserializer=self.deserializer,
+            key_serializer=self.key_serializer,
             ttl=ttl,
             limit=limit,
             namespace=namespace
@@ -105,10 +107,11 @@ class RedisCache:
         return deserialized_results
 
 class CacheDecorator:
-    def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, ttl=0, limit=0, namespace=None):
+    def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, key_serializer=None, ttl=0, limit=0, namespace=None):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
+        self.key_serializer = key_serializer
         self.deserializer = deserializer
         self.ttl = ttl
         self.limit = limit
@@ -116,7 +119,10 @@ class CacheDecorator:
         self.keys_key = None
 
     def get_key(self, args, kwargs):
-        serialized_data = self.serializer([args, kwargs])
+        if self.key_serializer:
+            serialized_data = self.key_serializer(args, kwargs)
+        else:
+            serialized_data = self.serializer([args, kwargs])
 
         if not isinstance(serialized_data, str):
             serialized_data = str(b64encode(serialized_data), 'utf-8')
