@@ -1,11 +1,12 @@
+from base64 import b64encode
 from functools import wraps
 from json import dumps, loads
-from base64 import b64encode
 
 
 def get_cache_lua_fn(client):
     if not hasattr(client, '_lua_cache_fn'):
-        client._lua_cache_fn = client.register_script("""
+        client._lua_cache_fn = client.register_script(
+            """
 local ttl = tonumber(ARGV[2])
 local value
 if ttl > 0 then
@@ -32,7 +33,8 @@ if limit > 0 then
   end
 end
 return value
-""")
+"""
+        )
     return client._lua_cache_fn
 
 
@@ -55,7 +57,14 @@ def chunks(iterable, n):
 
 
 class RedisCache:
-    def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, key_serializer=None):
+    def __init__(
+        self,
+        redis_client,
+        prefix='rc',
+        serializer=dumps,
+        deserializer=loads,
+        key_serializer=None,
+    ):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
@@ -71,7 +80,7 @@ class RedisCache:
             key_serializer=self.key_serializer,
             ttl=ttl,
             limit=limit,
-            namespace=namespace
+            namespace=namespace,
         )
 
     def mget(self, *fns_with_args):
@@ -97,7 +106,11 @@ class RedisCache:
                 kwargs = fn_and_args['kwargs'] if 'kwargs' in fn_and_args else {}
                 result = fn.instance.original_fn(*args, **kwargs)
                 result_serialized = self.serializer(result)
-                get_cache_lua_fn(self.client)(keys=[keys[i], fn.instance.keys_key], args=[result_serialized, fn.instance.ttl, fn.instance.limit], client=pipeline)
+                get_cache_lua_fn(self.client)(
+                    keys=[keys[i], fn.instance.keys_key],
+                    args=[result_serialized, fn.instance.ttl, fn.instance.limit],
+                    client=pipeline,
+                )
             else:
                 result = self.deserializer(result)
             deserialized_results.append(result)
@@ -106,8 +119,19 @@ class RedisCache:
             pipeline.execute()
         return deserialized_results
 
+
 class CacheDecorator:
-    def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, key_serializer=None, ttl=0, limit=0, namespace=None):
+    def __init__(
+        self,
+        redis_client,
+        prefix='rc',
+        serializer=dumps,
+        deserializer=loads,
+        key_serializer=None,
+        ttl=0,
+        limit=0,
+        namespace=None,
+    ):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
@@ -129,7 +153,9 @@ class CacheDecorator:
         return f'{self.prefix}:{self.namespace}:{serialized_data}'
 
     def __call__(self, fn):
-        self.namespace = self.namespace if self.namespace else f'{fn.__module__}.{fn.__name__}'
+        self.namespace = (
+            self.namespace if self.namespace else f'{fn.__module__}.{fn.__name__}'
+        )
         self.keys_key = f'{self.prefix}:{self.namespace}:keys'
         self.original_fn = fn
 
@@ -141,7 +167,10 @@ class CacheDecorator:
             if not result:
                 result = fn(*args, **kwargs)
                 result_serialized = self.serializer(result)
-                get_cache_lua_fn(self.client)(keys=[key, self.keys_key], args=[result_serialized, self.ttl, self.limit])
+                get_cache_lua_fn(self.client)(
+                    keys=[key, self.keys_key],
+                    args=[result_serialized, self.ttl, self.limit],
+                )
             else:
                 result = self.deserializer(result)
             return result
@@ -159,6 +188,8 @@ class CacheDecorator:
         pipe.execute()
 
     def invalidate_all(self, *args, **kwargs):
-        chunks_gen = chunks(self.client.scan_iter(f'{self.prefix}:{self.namespace}:*'), 500)
+        chunks_gen = chunks(
+            self.client.scan_iter(f'{self.prefix}:{self.namespace}:*'), 500
+        )
         for keys in chunks_gen:
             self.client.delete(*keys)
