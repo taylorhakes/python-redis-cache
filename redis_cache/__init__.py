@@ -87,23 +87,24 @@ class RedisCache:
         keys = []
         for fn_and_args in fns_with_args:
             fn = fn_and_args['fn']
-            args = fn_and_args['args'] if 'args' in fn_and_args else []
-            kwargs = fn_and_args['kwargs'] if 'kwargs' in fn_and_args else {}
+            args = fn_and_args.get('args', [])
+            kwargs = fn_and_args.get('kwargs', {})
+
             keys.append(fn.instance.get_key(args=args, kwargs=kwargs))
 
         results = self.client.mget(*keys)
         pipeline = self.client.pipeline()
 
         deserialized_results = []
-        needs_pipeline = False
+        cache_miss_detected = False
         for i, result in enumerate(results):
             if result is None:
-                needs_pipeline = True
+                cache_miss_detected = True
 
                 fn_and_args = fns_with_args[i]
                 fn = fn_and_args['fn']
-                args = fn_and_args['args'] if 'args' in fn_and_args else []
-                kwargs = fn_and_args['kwargs'] if 'kwargs' in fn_and_args else {}
+                args = fn_and_args.get('args', [])
+                kwargs = fn_and_args.get('kwargs', {})
                 result = fn.instance.original_fn(*args, **kwargs)
                 result_serialized = self.serializer(result)
                 get_cache_lua_fn(self.client)(
@@ -115,7 +116,7 @@ class RedisCache:
                 result = self.deserializer(result)
             deserialized_results.append(result)
 
-        if needs_pipeline:
+        if cache_miss_detected:
             pipeline.execute()
         return deserialized_results
 
