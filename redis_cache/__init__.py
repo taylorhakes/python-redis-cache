@@ -1,6 +1,10 @@
+import logging
 from base64 import b64encode
+from collections import defaultdict
 from functools import wraps
 from json import dumps, loads
+
+logger = logging.getLogger(__package__)
 
 
 def get_cache_lua_fn(client):
@@ -71,7 +75,7 @@ class RedisCache:
         self.deserializer = deserializer
         self.key_serializer = key_serializer
 
-    def cache(self, ttl=0, limit=0, namespace=None):
+    def cache(self, ttl=0, limit=0, namespace=None, support_batch_call=False):
         return CacheDecorator(
             redis_client=self.client,
             prefix=self.prefix,
@@ -81,6 +85,7 @@ class RedisCache:
             ttl=ttl,
             limit=limit,
             namespace=namespace,
+            support_batch_call=support_batch_call,
         )
 
     def mget(self, *fns_with_args):
@@ -95,8 +100,10 @@ class RedisCache:
         results = self.client.mget(*keys)
         pipeline = self.client.pipeline()
 
-        deserialized_results = []
+        deserialized_results = {}
         cache_miss_detected = False
+        batch_calls_required = False
+        args_by_fn = defaultdict(list)
         for i, result in enumerate(results):
             if result is None:
                 cache_miss_detected = True
@@ -105,20 +112,41 @@ class RedisCache:
                 fn = fn_and_args['fn']
                 args = fn_and_args.get('args', [])
                 kwargs = fn_and_args.get('kwargs', {})
-                result = fn.instance.original_fn(*args, **kwargs)
-                result_serialized = self.serializer(result)
-                get_cache_lua_fn(self.client)(
-                    keys=[keys[i], fn.instance.keys_key],
-                    args=[result_serialized, fn.instance.ttl, fn.instance.limit],
-                    client=pipeline,
-                )
+
+                if fn.instance.support_batch_call:
+                    batch_calls_required = True
+                    fn_and_args['call_idx'] = i
+                    args_by_fn[fn].append(fn_and_args)
+                else:
+                    result = fn.instance.original_fn(*args, **kwargs)
+                    result_serialized = self.serializer(result)
+                    get_cache_lua_fn(self.client)(
+                        keys=[keys[i], fn.instance.keys_key],
+                        args=[result_serialized, fn.instance.ttl, fn.instance.limit],
+                        client=pipeline,
+                    )
+                    deserialized_results[i] = result
             else:
                 result = self.deserializer(result)
-            deserialized_results.append(result)
+                deserialized_results[i] = result
 
         if cache_miss_detected:
+            if batch_calls_required:
+                for fn, args_batch in args_by_fn.items():
+                    call_vector = [(fn_and_args['args'] or fn_and_args['kwargs']) for fn_and_args in args_batch]
+                    batch_result = fn.instance.original_fn(call_vector)
+                    for fn_and_args, result in zip(args_batch, batch_result):
+                        call_idx = fn_and_args['call_idx']
+
+                        result_serialized = self.serializer(result)
+                        get_cache_lua_fn(self.client)(
+                            keys=[keys[call_idx], fn.instance.keys_key],
+                            args=[result_serialized, fn.instance.ttl, fn.instance.limit],
+                            client=pipeline,
+                        )
+                        deserialized_results[call_idx] = result
             pipeline.execute()
-        return deserialized_results
+        return [deserialized_results[key] for key in sorted(deserialized_results.keys())]
 
 
 class CacheDecorator:
@@ -132,6 +160,7 @@ class CacheDecorator:
         ttl=0,
         limit=0,
         namespace=None,
+        support_batch_call=False
     ):
         self.client = redis_client
         self.prefix = prefix
@@ -142,6 +171,7 @@ class CacheDecorator:
         self.limit = limit
         self.namespace = namespace
         self.keys_key = None
+        self.support_batch_call = support_batch_call
 
     def get_key(self, args, kwargs):
         if self.key_serializer:
@@ -163,6 +193,12 @@ class CacheDecorator:
         @wraps(fn)
         def inner(*args, **kwargs):
             nonlocal self
+            if self.support_batch_call:
+                logger.warning('To use caching for batch-mode decorated functions, use RedisCache.mget()')
+                return fn(*args, **kwargs)
+                # effectively disable caching, otherwise we would need to re-implement much of
+                # the mget() logic covering filtering only args for which we encountered cache misses
+
             key = self.get_key(args, kwargs)
             result = self.client.get(key)
             if not result:

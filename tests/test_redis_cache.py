@@ -1,20 +1,19 @@
-import uuid
-import time
-
-from redis import StrictRedis
-from redis_cache import RedisCache
-
 import pickle
-import pytest
+import time
+import uuid
 import zlib
 
+import pytest
+from redis import StrictRedis
 
-redis_host = "redis-test-host"
+from redis_cache import RedisCache
+
+redis_host = 'redis-test-host'
 client = StrictRedis(host=redis_host, decode_responses=True)
 client_no_decode = StrictRedis(host=redis_host)
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope='session', autouse=True)
 def clear_cache(request):
     client.flushall()
 
@@ -32,6 +31,16 @@ def add_func(n1, n2):
         tuple(int, str(uuid.uuid4))
     """
     return n1 + n2, str(uuid.uuid4())
+
+
+def mul_func(n1, n2):
+    """ Multiply function
+    Multiply n1 to n2 and return a uuid4 unique verifier
+
+    Returns:
+        tuple(int, str(uuid.uuid4))
+    """
+    return n1 * n2, str(uuid.uuid4())
 
 
 def test_basic_check(cache):
@@ -207,6 +216,7 @@ def test_custom_serializer_with_compress():
 
     assert r1.sum == r2.sum and r1.verifier == r2.verifier
 
+
 def test_custom_key_serializer():
     def key_serializer(args, kwargs):
         return f'{args}.{kwargs}'
@@ -215,7 +225,7 @@ def test_custom_key_serializer():
         redis_client=client_no_decode,
         serializer=pickle.dumps,
         deserializer=pickle.loads,
-        key_serializer=key_serializer
+        key_serializer=key_serializer,
     )
 
     @cache.cache()
@@ -234,7 +244,42 @@ def test_basic_mget(cache):
     def add_basic_get(arg1, arg2):
         return add_func(arg1, arg2)
 
-    r_3_4, v_3_4 = cache.mget({"fn": add_basic_get, "args": (3, 4)})[0]
+    r_3_4, v_3_4 = cache.mget({'fn': add_basic_get, 'args': (3, 4)})[0]
     r2_3_4, v2_3_4 = add_basic_get(3, 4)
 
     assert r_3_4 == r2_3_4 and v_3_4 == v2_3_4
+
+
+def test_mget_in_batch_for_one_func(cache):
+    @cache.cache(support_batch_call=True)
+    def add_bulk_get(vector):
+        return [add_func(arg1, arg2) for (arg1, arg2) in vector]
+
+    (r_3_4, v_3_4), (r_5_6, v_5_6) = cache.mget(
+        {'fn': add_bulk_get, 'args': (3, 4)}, {'fn': add_bulk_get, 'args': (5, 6)},
+    )
+    (r2_3_4, v2_3_4), (r2_5_6, v2_5_6) = cache.mget(
+        {'fn': add_bulk_get, 'args': (3, 4)}, {'fn': add_bulk_get, 'args': (5, 6)},
+    )
+    assert [r_3_4, r_5_6] == [7, 11]
+    assert [(r_3_4, v_3_4), (r_5_6, v_5_6)] == [(r2_3_4, v2_3_4), (r2_5_6, v2_5_6)]
+
+
+def test_mget_in_batch_for_two_func(cache):
+    @cache.cache(support_batch_call=True)
+    def add_bulk_get(vector):
+        return [add_func(arg1, arg2) for (arg1, arg2) in vector]
+
+    @cache.cache(support_batch_call=True)
+    def mul_bulk_get(vector):
+        return [mul_func(arg1, arg2) for (arg1, arg2) in vector]
+
+    (r_3_4, v_3_4), (r_5_6, v_5_6) = cache.mget(
+        {'fn': add_bulk_get, 'args': (3, 4)}, {'fn': mul_bulk_get, 'args': (5, 6)},
+    )
+    (r2_3_4, v2_3_4), (r2_5_6, v2_5_6) = cache.mget(
+        {'fn': add_bulk_get, 'args': (3, 4)}, {'fn': mul_bulk_get, 'args': (5, 6)},
+    )
+
+    assert [r_3_4, r_5_6] == [7, 30]
+    assert [(r_3_4, v_3_4), (r_5_6, v_5_6)] == [(r2_3_4, v2_3_4), (r2_5_6, v2_5_6)]
