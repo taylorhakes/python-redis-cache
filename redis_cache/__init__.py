@@ -98,6 +98,7 @@ class RedisCache:
         deserialized_results = {}
         cache_miss_detected = False
         args_by_fn = defaultdict(list)
+        # Store cache hit results and group cache misses by fn
         for i, result in enumerate(results):
             if result is None:
                 cache_miss_detected = True
@@ -118,12 +119,14 @@ class RedisCache:
                 for fn_and_args, result in zip(args_batch, batch_result):
                     call_idx = fn_and_args['call_idx']
 
+                    # populate cache with freshly calculated values
                     result_serialized = self.serializer(result)
                     get_cache_lua_fn(self.client)(
                         keys=[keys[call_idx], fn.instance.keys_key],
                         args=[result_serialized, fn.instance.ttl, fn.instance.limit],
                         client=pipeline,
                     )
+                    # insert them in results in order they were requested
                     deserialized_results[call_idx] = result
             pipeline.execute()
 
