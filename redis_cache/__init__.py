@@ -113,14 +113,7 @@ class RedisCache:
 
         if cache_miss_detected:
             for fn, args_batch in args_by_fn.items():
-                if fn.instance.support_batch_call:
-                    call_vector = [(fn_and_args['args'] or fn_and_args['kwargs']) for fn_and_args in args_batch]
-                    batch_result = fn.instance.original_fn(call_vector)
-                else:
-                    batch_result = [
-                        fn.instance.original_fn(*fn_and_args['args'], **fn_and_args['kwargs'])
-                        for fn_and_args in args_batch
-                    ]
+                batch_result = self._get_batch_call_result(fn, args_batch)
 
                 for fn_and_args, result in zip(args_batch, batch_result):
                     call_idx = fn_and_args['call_idx']
@@ -135,6 +128,18 @@ class RedisCache:
             pipeline.execute()
 
         return [deserialized_results[key] for key in sorted(deserialized_results.keys())]
+
+    @staticmethod
+    def _get_batch_call_result(fn, args_batch):
+        original_fn = fn.instance.original_fn
+
+        if fn.instance.support_batch_call:
+            call_vector = [(fn_and_args['args'] or fn_and_args['kwargs']) for fn_and_args in args_batch]
+            batch_result = original_fn(call_vector)
+        else:
+            batch_result = [original_fn(*fn_and_args['args'], **fn_and_args['kwargs']) for fn_and_args in args_batch]
+
+        return batch_result
 
 
 class CacheDecorator:
