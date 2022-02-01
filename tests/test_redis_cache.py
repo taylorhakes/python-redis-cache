@@ -283,3 +283,23 @@ def test_mget_in_batch_for_two_func(cache):
 
     assert [r_3_4, r_5_6] == [7, 30]
     assert [(r_3_4, v_3_4), (r_5_6, v_5_6)] == [(r2_3_4, v2_3_4), (r2_5_6, v2_5_6)]
+
+
+def test_mget_for_two_func_one_with_one_without_batching(cache):
+    @cache.cache()
+    def add_basic_get(arg1, arg2):
+        return add_func(arg1, arg2)
+
+    @cache.cache(support_batch_call=True)
+    def mul_bulk_get(vector):
+        return [mul_func(arg1, arg2) for (arg1, arg2) in vector]
+
+    (r_3_4, v_3_4), (r_5_6, v_5_6) = cache.mget(
+        {'fn': add_basic_get, 'args': (3, 4)}, {'fn': mul_bulk_get, 'args': (5, 6)},
+    )
+    (r2_3_4, v2_3_4), (r2_5_6, v2_5_6) = cache.mget(
+        {'fn': add_basic_get, 'args': (3, 4)}, {'fn': mul_bulk_get, 'args': (5, 6)},
+    )
+
+    assert [r_3_4, r_5_6] == [7, 30]
+    assert [(r_3_4, v_3_4), (r_5_6, v_5_6)] == [(r2_3_4, v2_3_4), (r2_5_6, v2_5_6)]
