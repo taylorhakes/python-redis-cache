@@ -51,9 +51,16 @@ https://security.stackexchange.com/questions/183966/safely-load-a-pickle-file
 
 ## API
 ```python
-RedisCache(redis_client, prefix="rc", serializer=dumps, deserializer=loads)
+# Create the redis cache
+cache = RedisCache(redis_client, prefix="rc", serializer=dumps, deserializer=loads)
 
-RedisCache.cache(ttl=None, limit=None, namespace=None)
+# Cache decorator to go on functions, see above
+cache.cache(ttl=..., limit=..., namespace=...) -> Callable[[Callable], Callable]
+
+# Get multiple values from the cache
+cache.mget([{"fn": my_func, "args": [1,2], "kwargs": {}}, ...]) -> List[Any]
+
+Redis
 
 # Cached function API
 
