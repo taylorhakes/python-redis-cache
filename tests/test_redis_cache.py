@@ -13,6 +13,8 @@ redis_host = "redis-test-host"
 client = StrictRedis(host=redis_host, decode_responses=True)
 client_no_decode = StrictRedis(host=redis_host)
 
+client = StrictRedis(decode_responses=True)
+client_no_decode = StrictRedis()
 
 @pytest.fixture(scope="session", autouse=True)
 def clear_cache(request):
@@ -238,3 +240,47 @@ def test_basic_mget(cache):
     r2_3_4, v2_3_4 = add_basic_get(3, 4)
 
     assert r_3_4 == r2_3_4 and v_3_4 == v2_3_4
+
+
+def test_same_name_method(cache):
+    class A:
+        @staticmethod
+        @cache.cache()
+        def static_method():
+            return 'A'
+    
+    class B:
+        @staticmethod
+        @cache.cache()
+        def static_method():
+            return 'B'
+    
+    A.static_method()
+    B.static_method()
+
+    # If there was a key conflict, the results should be the same
+    assert A.static_method() != B.static_method()
+
+
+def test_same_name_inner_function(cache):
+    def a():
+        @cache.cache()
+        def inner_function():
+            return 'A'
+        
+        inner_function() # Store the value in the cache
+        return inner_function
+    
+    def b():
+        @cache.cache()
+        def inner_function():
+            return 'B'
+
+        inner_function()
+        return inner_function
+    
+    first_func = a()
+    second_func = b()
+
+    # If there was a key conflict, the results should be the same
+    assert first_func() != second_func()
