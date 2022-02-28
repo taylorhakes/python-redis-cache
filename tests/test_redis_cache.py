@@ -226,7 +226,7 @@ def test_custom_key_serializer():
     r2 = add_custom_key_serializer(2, 3)
 
     assert r1 == r2
-    assert client.exists('rc:test_redis_cache.add_custom_key_serializer:(2, 3).{}')
+    assert client.exists('rc:test_redis_cache.test_custom_key_serializer.<locals>.add_custom_key_serializer:(2, 3).{}')
 
 
 def test_basic_mget(cache):
