@@ -13,8 +13,6 @@ redis_host = "redis-test-host"
 client = StrictRedis(host=redis_host, decode_responses=True)
 client_no_decode = StrictRedis(host=redis_host)
 
-client = StrictRedis(decode_responses=True)
-client_no_decode = StrictRedis()
 
 @pytest.fixture(scope="session", autouse=True)
 def clear_cache(request):
