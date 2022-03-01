@@ -1,0 +1,18 @@
+name: Commit message validation
+
+on: pull_request
+
+jobs:
+  commit-message-validation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Commit message validation
+        uses: taylorhakes/commit-message-validator@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          no-jira: true
