@@ -253,10 +253,20 @@ def test_same_name_method(cache):
         def static_method():
             return 'B'
     
-    A.static_method()
+    A.static_method() # Store the value in the cache
     B.static_method()
 
-    # If there was a key conflict, the results should be the same
+    key_a = A.static_method.instance.get_key([], {})
+    key_b = B.static_method.instance.get_key([], {})
+
+    # 1. Check that both keys exists
+    assert client.exists(key_a)
+    assert client.exists(key_b)
+    
+    # 2. They are different
+    assert key_a != key_b
+    
+    # 3. And stored values are different
     assert A.static_method() != B.static_method()
 
 
@@ -265,20 +275,29 @@ def test_same_name_inner_function(cache):
         @cache.cache()
         def inner_function():
             return 'A'
-        
-        inner_function() # Store the value in the cache
         return inner_function
     
     def b():
         @cache.cache()
         def inner_function():
             return 'B'
-
-        inner_function()
         return inner_function
     
     first_func = a()
     second_func = b()
 
-    # If there was a key conflict, the results should be the same
+    first_func() # Store the value in the cache
+    second_func()
+    
+    first_key = first_func.instance.get_key([], {})
+    second_key = second_func.instance.get_key([], {})
+    
+    # 1. Check that both keys exists
+    assert client.exists(first_key)
+    assert client.exists(second_key)
+    
+    # 2. They are different
+    assert first_key != second_key
+    
+    # 3. And stored values are different
     assert first_func() != second_func()
