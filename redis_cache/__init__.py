@@ -190,7 +190,7 @@ class CacheDecorator:
                 match_kwargs.append(
                     name in kwargs_from_key and kwargs_from_key[name] == val
                 )
-            if all(match_kwargs):
+            if match_kwargs and all(match_kwargs):
                 keys.add(k)
         if keys:
             pipe = self.client.pipeline()
