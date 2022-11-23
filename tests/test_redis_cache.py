@@ -129,6 +129,38 @@ def test_invalidate_in_cache(cache):
     assert r_4_4 == r2_4_4 and v_4_4 != v2_4_4
 
 
+def test_invalidate_partial(cache):
+    @cache.cache()
+    def add_invalidate_partial(arg1, arg2=0):
+        return add_func(arg1, arg2)
+
+    r_3_4, v_3_4 = add_invalidate_partial(3, 4)
+    r_4_4, v_4_4 = add_invalidate_partial(4, 4)
+
+    # we are invalidating any key with 4 in it so it should be re-executed next
+    # time
+    add_invalidate_partial.invalidate_partial(4)
+
+    r2_3_4, v2_3_4 = add_invalidate_partial(3, 4)
+    r2_4_4, v2_4_4 = add_invalidate_partial(4, 4)
+
+    assert r_3_4 == r2_3_4 and v_3_4 != v2_3_4
+    assert r_4_4 == r2_4_4 and v_4_4 != v2_4_4
+
+    # Check the behavior of kwargs
+    r, v = add_invalidate_partial(arg1=3, arg2=4)
+    r2, v2 = add_invalidate_partial(arg1=3, arg2=4)
+    assert r == r2 and v == v2
+    # This should not invalidate any results
+    add_invalidate_partial.invalidate_partial(arg1=4)
+    r2, v2 = add_invalidate_partial(arg1=3, arg2=4)
+    assert r == r2 and v == v2
+    # This should invalidate our result
+    add_invalidate_partial.invalidate_partial(arg2=4)
+    r2, v2 = add_invalidate_partial(arg1=3, arg2=4)
+    assert r == r2 and v != v2
+
+
 def test_invalidate_all():
     cache = RedisCache(redis_client=client)
 

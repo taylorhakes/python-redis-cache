@@ -55,12 +55,13 @@ def chunks(iterable, n):
 
 
 class RedisCache:
-    def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, key_serializer=None):
+    def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, key_serializer=None, key_deserializer=None):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
         self.deserializer = deserializer
         self.key_serializer = key_serializer
+        self.key_deserializer = key_deserializer
 
     def cache(self, ttl=0, limit=0, namespace=None):
         return CacheDecorator(
@@ -69,6 +70,7 @@ class RedisCache:
             serializer=self.serializer,
             deserializer=self.deserializer,
             key_serializer=self.key_serializer,
+            key_deserializer=self.key_deserializer,
             ttl=ttl,
             limit=limit,
             namespace=namespace
@@ -107,11 +109,12 @@ class RedisCache:
         return deserialized_results
 
 class CacheDecorator:
-    def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, key_serializer=None, ttl=0, limit=0, namespace=None):
+    def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, key_serializer=None, key_deserializer=None, ttl=0, limit=0, namespace=None):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
         self.key_serializer = key_serializer
+        self.key_deserializer = key_deserializer
         self.deserializer = deserializer
         self.ttl = ttl
         self.limit = limit
@@ -127,6 +130,12 @@ class CacheDecorator:
         if not isinstance(serialized_data, str):
             serialized_data = str(b64encode(serialized_data), 'utf-8')
         return f'{self.prefix}:{self.namespace}:{serialized_data}'
+
+    def deserialize_key(self, key: str):
+        if self.key_deserializer is not None:
+            return self.key_deserializer(key)
+        else:
+            return self.deserializer(key)
 
     def __call__(self, fn):
         self.namespace = self.namespace if self.namespace else f'{fn.__module__}.{fn.__name__}'
@@ -147,6 +156,7 @@ class CacheDecorator:
             return result
 
         inner.invalidate = self.invalidate
+        inner.invalidate_partial = self.invalidate_partial
         inner.invalidate_all = self.invalidate_all
         inner.instance = self
         return inner
@@ -157,6 +167,37 @@ class CacheDecorator:
         pipe.delete(key)
         pipe.zrem(self.keys_key, key)
         pipe.execute()
+
+    def invalidate_partial(self, *args, **kwargs):
+        """Invalidate items in the cache based on partial matches.
+
+        A partial match is when any of the values in ``args`` are in the key's
+        ``args`` or all of the key/value pairs in ``kwargs`` are in the key's
+        ``kwargs``.
+        """
+        # First gather up a list of matching keys
+        keys = set()
+        for k in self.client.scan_iter(f'{self.prefix}:{self.namespace}:*'):
+            kstr = k.split(":", 2)[-1]
+            key = self.deserialize_key(kstr)
+            args_from_key = key[0]
+            kwargs_from_key = key[1]
+            for a in args:
+                if a in args_from_key:
+                    keys.add(k)
+            match_kwargs = []
+            for name, val in kwargs.items():
+                match_kwargs.append(
+                    name in kwargs_from_key and kwargs_from_key[name] == val
+                )
+            if all(match_kwargs):
+                keys.add(k)
+        if keys:
+            pipe = self.client.pipeline()
+            for key in keys:
+                pipe.delete(key)
+                pipe.zrem(self.keys_key, key)
+            pipe.execute()
 
     def invalidate_all(self, *args, **kwargs):
         chunks_gen = chunks(self.client.scan_iter(f'{self.prefix}:{self.namespace}:*'), 500)
