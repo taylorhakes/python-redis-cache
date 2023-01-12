@@ -129,7 +129,7 @@ class CacheDecorator:
         return f'{self.prefix}:{self.namespace}:{serialized_data}'
 
     def __call__(self, fn):
-        self.namespace = self.namespace if self.namespace else f'{fn.__module__}.{fn.__name__}'
+        self.namespace = self.namespace or f'{fn.__module__}.{fn.__qualname__}'
         self.keys_key = f'{self.prefix}:{self.namespace}:keys'
         self.original_fn = fn
 
@@ -148,6 +148,8 @@ class CacheDecorator:
 
         inner.invalidate = self.invalidate
         inner.invalidate_all = self.invalidate_all
+        inner.copy_old_keys = self.copy_old_keys
+        inner.delete_old_keys = self.delete_old_keys
         inner.instance = self
         return inner
 
@@ -160,5 +162,24 @@ class CacheDecorator:
 
     def invalidate_all(self, *args, **kwargs):
         chunks_gen = chunks(self.client.scan_iter(f'{self.prefix}:{self.namespace}:*'), 500)
+        for keys in chunks_gen:
+            self.client.delete(*keys)
+    
+    def copy_old_keys(self):
+        old_namespace = f'{self.original_fn.__module__}.{self.original_fn.__name__}'
+        chunks_gen = chunks(self.client.scan_iter(f'{self.prefix}:{old_namespace}:*'), 500)
+        for keys in chunks_gen:
+            for key in keys:
+                new_key = key.replace(old_namespace, self.namespace)
+                
+                try:
+                    self.client.copy(key, new_key)
+                except: # Copy command is available since Redis 6.2.0, this throws a ResponseError from redis module
+                    data = self.client.get(key)
+                    self.client.set(new_key, data)
+    
+    def delete_old_keys(self):
+        old_namespace = f'{self.original_fn.__module__}.{self.original_fn.__name__}'
+        chunks_gen = chunks(self.client.scan_iter(f'{self.prefix}:{old_namespace}:*'), 500)
         for keys in chunks_gen:
             self.client.delete(*keys)

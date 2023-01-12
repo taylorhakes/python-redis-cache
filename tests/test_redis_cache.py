@@ -226,7 +226,7 @@ def test_custom_key_serializer():
     r2 = add_custom_key_serializer(2, 3)
 
     assert r1 == r2
-    assert client.exists('rc:test_redis_cache.add_custom_key_serializer:(2, 3).{}')
+    assert client.exists('rc:test_redis_cache.test_custom_key_serializer.<locals>.add_custom_key_serializer:(2, 3).{}')
 
 
 def test_basic_mget(cache):
@@ -238,3 +238,132 @@ def test_basic_mget(cache):
     r2_3_4, v2_3_4 = add_basic_get(3, 4)
 
     assert r_3_4 == r2_3_4 and v_3_4 == v2_3_4
+
+
+def test_same_name_method(cache):
+    class A:
+        @staticmethod
+        @cache.cache()
+        def static_method():
+            return 'A'
+    
+    class B:
+        @staticmethod
+        @cache.cache()
+        def static_method():
+            return 'B'
+    
+    A.static_method() # Store the value in the cache
+    B.static_method()
+
+    key_a = A.static_method.instance.get_key([], {})
+    key_b = B.static_method.instance.get_key([], {})
+
+    # 1. Check that both keys exists
+    assert client.exists(key_a)
+    assert client.exists(key_b)
+    
+    # 2. They are different
+    assert key_a != key_b
+    
+    # 3. And stored values are different
+    assert A.static_method() != B.static_method()
+
+
+def test_same_name_inner_function(cache):
+    def a():
+        @cache.cache()
+        def inner_function():
+            return 'A'
+        return inner_function
+    
+    def b():
+        @cache.cache()
+        def inner_function():
+            return 'B'
+        return inner_function
+    
+    first_func = a()
+    second_func = b()
+
+    first_func() # Store the value in the cache
+    second_func()
+    
+    first_key = first_func.instance.get_key([], {})
+    second_key = second_func.instance.get_key([], {})
+    
+    # 1. Check that both keys exists
+    assert client.exists(first_key)
+    assert client.exists(second_key)
+    
+    # 2. They are different
+    assert first_key != second_key
+    
+    # 3. And stored values are different
+    assert first_func() != second_func()
+
+
+def test_copy_old_keys(cache):
+    @cache.cache(namespace='test_redis_cache.some_function') # we imitate the old behavior
+    def some_function(value):
+        return value
+    
+    @cache.cache()
+    def another_function(value):
+        return value
+    
+    # set some keys in the db with the old format
+    
+    some_function(1)
+    some_function(2)
+    some_function(3)
+    another_function(1)
+    another_function(2)
+    another_function(3)
+
+    assert client.exists(some_function.instance.get_key([1], {}))
+    
+    some_function.instance.namespace = f'{some_function.__module__}.{some_function.__qualname__}' # restore the new key format
+    some_function.copy_old_keys()
+
+    # check if the migrate keys exists and the value is correct
+    assert client.exists(some_function.instance.get_key([1], {})) and some_function(1) == 1
+    assert client.exists(some_function.instance.get_key([2], {})) and some_function(2) == 2
+    assert client.exists(some_function.instance.get_key([3], {})) and some_function(3) == 3
+    
+    # check if other keys are intact
+    assert client.exists(another_function.instance.get_key([1], {})) and another_function(1) == 1
+    assert client.exists(another_function.instance.get_key([2], {})) and another_function(2) == 2
+    assert client.exists(another_function.instance.get_key([3], {})) and another_function(3) == 3
+
+
+def test_delete_old_keys(cache):
+    @cache.cache(namespace='test_redis_cache.some_function') # we imitate the old behavior
+    def some_function(value):
+        return value
+    
+    @cache.cache()
+    def another_function(value):
+        return value
+    
+    some_function(1)
+    some_function(2)
+    some_function(3)
+    another_function(1)
+    another_function(2)
+    another_function(3)
+
+    assert client.exists(some_function.instance.get_key([1], {}))
+    assert client.exists(another_function.instance.get_key([1], {}))
+
+    some_function.copy_old_keys() # already tested
+    some_function.delete_old_keys()
+
+    assert not client.exists(some_function.instance.get_key([1], {}))
+    assert not client.exists(some_function.instance.get_key([2], {}))
+    assert not client.exists(some_function.instance.get_key([3], {}))
+
+    # check if other keys are intact
+    assert client.exists(another_function.instance.get_key([1], {}))
+    assert client.exists(another_function.instance.get_key([2], {}))
+    assert client.exists(another_function.instance.get_key([3], {}))
