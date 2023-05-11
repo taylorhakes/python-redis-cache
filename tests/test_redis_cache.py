@@ -42,9 +42,13 @@ def test_basic_check(cache):
 
     r_3_4, v_3_4 = add_basic(3, 4)
     r_3_4_cached, v_3_4_cached = add_basic(3, 4)
+    # Make sure the same cache is used for kwargs
+    r_3_4_cached_kwargs, v_3_4_cached_kwargs = add_basic(arg1=3, arg2=4)
+    r_3_4_cached_mix, v_3_4_cached_mix = add_basic(3, arg2=4)
     r_5_5, v_5_5 = add_basic(5, 5)
 
-    assert 7 == r_3_4 == r_3_4_cached and v_3_4 == v_3_4_cached
+    assert 7 == r_3_4 == r_3_4_cached == r_3_4_cached_kwargs == r_3_4_cached_mix \
+           and v_3_4 == v_3_4_cached == v_3_4_cached_kwargs == v_3_4_cached_mix
     assert 10 == r_5_5 and v_5_5 != r_3_4
 
 
