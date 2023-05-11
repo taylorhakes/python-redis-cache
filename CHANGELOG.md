@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v2.1.0 (2023-05-11)
+### Feature
+* Fix caching to work on cluster ([`69c1377`](https://github.com/taylorhakes/python-redis-cache/commit/69c13775aeec21e8994228d61e22482a0c12a324))
+
+### Documentation
+* **readme:** Update docs to specify Python 3.7 ([`145693d`](https://github.com/taylorhakes/python-redis-cache/commit/145693d07b83ac1ecc046841c8a82aba2ec6e6f4))
+
 ## v2.0.0 (2023-01-12)
 ### Fix
 * Update key names to prevent bug ([`c9efd2d`](https://github.com/taylorhakes/python-redis-cache/commit/c9efd2de7247fe4974bd6e29e790b3011e9b9581))
