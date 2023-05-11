@@ -3,6 +3,7 @@ import time
 
 from redis import StrictRedis
 from redis_cache import RedisCache
+from base64 import b64encode
 
 import pickle
 import pytest
@@ -208,8 +209,8 @@ def test_custom_serializer_with_compress():
     assert r1.sum == r2.sum and r1.verifier == r2.verifier
 
 def test_custom_key_serializer():
-    def key_serializer(args, kwargs):
-        return f'{args}.{kwargs}'
+    def key_serializer(args):
+        return f'{args}'
 
     cache = RedisCache(
         redis_client=client_no_decode,
@@ -225,8 +226,10 @@ def test_custom_key_serializer():
     r1 = add_custom_key_serializer(2, 3)
     r2 = add_custom_key_serializer(2, 3)
 
+    encoded_args = b64encode("{'arg1': 2, 'arg2': 3}".encode('utf-8')).decode('utf-8')
+
     assert r1 == r2
-    assert client.exists('rc:test_redis_cache.test_custom_key_serializer.<locals>.add_custom_key_serializer:(2, 3).{}')
+    assert client.exists(f'{{rc:test_redis_cache.test_custom_key_serializer.<locals>.add_custom_key_serializer}}:{encoded_args}')
 
 
 def test_basic_mget(cache):
@@ -301,69 +304,3 @@ def test_same_name_inner_function(cache):
     
     # 3. And stored values are different
     assert first_func() != second_func()
-
-
-def test_copy_old_keys(cache):
-    @cache.cache(namespace='test_redis_cache.some_function') # we imitate the old behavior
-    def some_function(value):
-        return value
-    
-    @cache.cache()
-    def another_function(value):
-        return value
-    
-    # set some keys in the db with the old format
-    
-    some_function(1)
-    some_function(2)
-    some_function(3)
-    another_function(1)
-    another_function(2)
-    another_function(3)
-
-    assert client.exists(some_function.instance.get_key([1], {}))
-    
-    some_function.instance.namespace = f'{some_function.__module__}.{some_function.__qualname__}' # restore the new key format
-    some_function.copy_old_keys()
-
-    # check if the migrate keys exists and the value is correct
-    assert client.exists(some_function.instance.get_key([1], {})) and some_function(1) == 1
-    assert client.exists(some_function.instance.get_key([2], {})) and some_function(2) == 2
-    assert client.exists(some_function.instance.get_key([3], {})) and some_function(3) == 3
-    
-    # check if other keys are intact
-    assert client.exists(another_function.instance.get_key([1], {})) and another_function(1) == 1
-    assert client.exists(another_function.instance.get_key([2], {})) and another_function(2) == 2
-    assert client.exists(another_function.instance.get_key([3], {})) and another_function(3) == 3
-
-
-def test_delete_old_keys(cache):
-    @cache.cache(namespace='test_redis_cache.some_function') # we imitate the old behavior
-    def some_function(value):
-        return value
-    
-    @cache.cache()
-    def another_function(value):
-        return value
-    
-    some_function(1)
-    some_function(2)
-    some_function(3)
-    another_function(1)
-    another_function(2)
-    another_function(3)
-
-    assert client.exists(some_function.instance.get_key([1], {}))
-    assert client.exists(another_function.instance.get_key([1], {}))
-
-    some_function.copy_old_keys() # already tested
-    some_function.delete_old_keys()
-
-    assert not client.exists(some_function.instance.get_key([1], {}))
-    assert not client.exists(some_function.instance.get_key([2], {}))
-    assert not client.exists(some_function.instance.get_key([3], {}))
-
-    # check if other keys are intact
-    assert client.exists(another_function.instance.get_key([1], {}))
-    assert client.exists(another_function.instance.get_key([2], {}))
-    assert client.exists(another_function.instance.get_key([3], {}))
