@@ -1,6 +1,6 @@
 from functools import wraps
 from json import dumps, loads
-from base64 import b64encode
+from base64 import b64encode, b64decode
 from inspect import signature
 
 def compact_dump(value):
@@ -177,6 +177,7 @@ class CacheDecorator:
         return f'{self.get_full_prefix()}:{serialized_encoded_data}'
 
     def deserialize_key(self, key: str):
+        key = b64decode(key)
         if self.key_deserializer is not None:
             return self.key_deserializer(key)
         else:
@@ -223,19 +224,16 @@ class CacheDecorator:
         """
         # First gather up a list of matching keys
         keys = set()
-        for k in self.client.scan_iter(f'{self.prefix}:{self.namespace}:*'):
+        for k in self.client.scan_iter(f'{self.get_full_prefix()}:*'):
             kstr = k.split(":", 2)[-1]
             key = self.deserialize_key(kstr)
-            args_from_key = key[0]
-            kwargs_from_key = key[1]
+            vals_from_key = list(key.values())
             for a in args:
-                if a in args_from_key:
+                if a in vals_from_key:
                     keys.add(k)
             match_kwargs = []
             for name, val in kwargs.items():
-                match_kwargs.append(
-                    name in kwargs_from_key and kwargs_from_key[name] == val
-                )
+                match_kwargs.append(name in key and key[name] == val)
             if match_kwargs and all(match_kwargs):
                 keys.add(k)
         if keys:
