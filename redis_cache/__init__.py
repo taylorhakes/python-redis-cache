@@ -1,6 +1,41 @@
 from functools import wraps
 from json import dumps, loads
 from base64 import b64encode
+from inspect import signature
+
+def compact_dump(value):
+    return dumps(value, separators=(',', ':'))
+
+def get_args(fn, args, kwargs):
+    """
+    This function parses the args and kwargs in the context of a function and creates unified
+    dictionary of {<argument_name>: <value>}. This is useful
+    because arguments can be passed as args or kwargs, and we want to make sure we cache
+    them both the same. Otherwise there would be different caching for add(1, 2) and add(arg1=1, arg2=2)
+    """
+    arg_sig = signature(fn)
+    standard_args = [param.name for param in arg_sig.parameters.values() if param.kind is param.POSITIONAL_OR_KEYWORD]
+    variable_args = [param.name for param in arg_sig.parameters.values() if param.kind is param.VAR_POSITIONAL]
+    parsed_args = {}
+
+    if standard_args:
+        for index, arg in enumerate(args):
+            try:
+                parsed_args[standard_args[index]] = arg
+            except IndexError:
+                # then fallback to using the positional varargs name
+                if variable_args:
+                    vargs_name = variable_args[0]
+                    if not parsed_args[vargs_name]:
+                        parsed_args[vargs_name] = []
+
+                    parsed_args[vargs_name].append(arg)
+
+        # finally show the named varargs
+    if kwargs:
+        parsed_args.update(kwargs)
+
+    return parsed_args
 
 
 def get_cache_lua_fn(client):
@@ -55,7 +90,11 @@ def chunks(iterable, n):
 
 
 class RedisCache:
+<<<<<<< HEAD
     def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, key_serializer=None, key_deserializer=None):
+=======
+    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None):
+>>>>>>> 68f09bab88bca27a3565c1360cb75c464ddc7d31
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
@@ -109,7 +148,11 @@ class RedisCache:
         return deserialized_results
 
 class CacheDecorator:
+<<<<<<< HEAD
     def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, key_serializer=None, key_deserializer=None, ttl=0, limit=0, namespace=None):
+=======
+    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, ttl=0, limit=0, namespace=None):
+>>>>>>> 68f09bab88bca27a3565c1360cb75c464ddc7d31
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
@@ -120,16 +163,26 @@ class CacheDecorator:
         self.limit = limit
         self.namespace = namespace
         self.keys_key = None
+        self.original_fn = None
+
+    def get_full_prefix(self):
+        return f'{{{self.prefix}:{self.namespace}}}'
 
     def get_key(self, args, kwargs):
-        if self.key_serializer:
-            serialized_data = self.key_serializer(args, kwargs)
-        else:
-            serialized_data = self.serializer([args, kwargs])
+        normalized_args = get_args(self.original_fn, args, kwargs)
 
-        if not isinstance(serialized_data, str):
-            serialized_data = str(b64encode(serialized_data), 'utf-8')
-        return f'{self.prefix}:{self.namespace}:{serialized_data}'
+        if self.key_serializer:
+            serialized_data = self.key_serializer(normalized_args)
+        else:
+            serialized_data = self.serializer(normalized_args)
+
+        if isinstance(serialized_data, str):
+            serialized_data = serialized_data.encode('utf-8')
+
+        # Encode the value as base64 to avoid issues with {} and other special characters
+        serialized_encoded_data = b64encode(serialized_data).decode('utf-8')
+
+        return f'{self.get_full_prefix()}:{serialized_encoded_data}'
 
     def deserialize_key(self, key: str):
         if self.key_deserializer is not None:
@@ -138,8 +191,8 @@ class CacheDecorator:
             return self.deserializer(key)
 
     def __call__(self, fn):
-        self.namespace = self.namespace if self.namespace else f'{fn.__module__}.{fn.__name__}'
-        self.keys_key = f'{self.prefix}:{self.namespace}:keys'
+        self.namespace = self.namespace or f'{fn.__module__}.{fn.__qualname__}'
+        self.keys_key = f'{self.get_full_prefix()}:keys'
         self.original_fn = fn
 
         @wraps(fn)
@@ -158,6 +211,7 @@ class CacheDecorator:
         inner.invalidate = self.invalidate
         inner.invalidate_partial = self.invalidate_partial
         inner.invalidate_all = self.invalidate_all
+        inner.get_full_prefix = self.get_full_prefix
         inner.instance = self
         return inner
 
@@ -200,6 +254,6 @@ class CacheDecorator:
             pipe.execute()
 
     def invalidate_all(self, *args, **kwargs):
-        chunks_gen = chunks(self.client.scan_iter(f'{self.prefix}:{self.namespace}:*'), 500)
+        chunks_gen = chunks(self.client.scan_iter(f'{self.get_full_prefix()}:*'), 500)
         for keys in chunks_gen:
             self.client.delete(*keys)

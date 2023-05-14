@@ -3,6 +3,7 @@ import time
 
 from redis import StrictRedis
 from redis_cache import RedisCache
+from base64 import b64encode
 
 import pickle
 import pytest
@@ -41,9 +42,13 @@ def test_basic_check(cache):
 
     r_3_4, v_3_4 = add_basic(3, 4)
     r_3_4_cached, v_3_4_cached = add_basic(3, 4)
+    # Make sure the same cache is used for kwargs
+    r_3_4_cached_kwargs, v_3_4_cached_kwargs = add_basic(arg1=3, arg2=4)
+    r_3_4_cached_mix, v_3_4_cached_mix = add_basic(3, arg2=4)
     r_5_5, v_5_5 = add_basic(5, 5)
 
-    assert 7 == r_3_4 == r_3_4_cached and v_3_4 == v_3_4_cached
+    assert 7 == r_3_4 == r_3_4_cached == r_3_4_cached_kwargs == r_3_4_cached_mix \
+           and v_3_4 == v_3_4_cached == v_3_4_cached_kwargs == v_3_4_cached_mix
     assert 10 == r_5_5 and v_5_5 != r_3_4
 
 
@@ -240,8 +245,8 @@ def test_custom_serializer_with_compress():
     assert r1.sum == r2.sum and r1.verifier == r2.verifier
 
 def test_custom_key_serializer():
-    def key_serializer(args, kwargs):
-        return f'{args}.{kwargs}'
+    def key_serializer(args):
+        return f'{args}'
 
     cache = RedisCache(
         redis_client=client_no_decode,
@@ -257,8 +262,10 @@ def test_custom_key_serializer():
     r1 = add_custom_key_serializer(2, 3)
     r2 = add_custom_key_serializer(2, 3)
 
+    encoded_args = b64encode("{'arg1': 2, 'arg2': 3}".encode('utf-8')).decode('utf-8')
+
     assert r1 == r2
-    assert client.exists('rc:test_redis_cache.add_custom_key_serializer:(2, 3).{}')
+    assert client.exists(f'{{rc:test_redis_cache.test_custom_key_serializer.<locals>.add_custom_key_serializer}}:{encoded_args}')
 
 
 def test_basic_mget(cache):
@@ -270,3 +277,66 @@ def test_basic_mget(cache):
     r2_3_4, v2_3_4 = add_basic_get(3, 4)
 
     assert r_3_4 == r2_3_4 and v_3_4 == v2_3_4
+
+
+def test_same_name_method(cache):
+    class A:
+        @staticmethod
+        @cache.cache()
+        def static_method():
+            return 'A'
+    
+    class B:
+        @staticmethod
+        @cache.cache()
+        def static_method():
+            return 'B'
+    
+    A.static_method() # Store the value in the cache
+    B.static_method()
+
+    key_a = A.static_method.instance.get_key([], {})
+    key_b = B.static_method.instance.get_key([], {})
+
+    # 1. Check that both keys exists
+    assert client.exists(key_a)
+    assert client.exists(key_b)
+    
+    # 2. They are different
+    assert key_a != key_b
+    
+    # 3. And stored values are different
+    assert A.static_method() != B.static_method()
+
+
+def test_same_name_inner_function(cache):
+    def a():
+        @cache.cache()
+        def inner_function():
+            return 'A'
+        return inner_function
+    
+    def b():
+        @cache.cache()
+        def inner_function():
+            return 'B'
+        return inner_function
+    
+    first_func = a()
+    second_func = b()
+
+    first_func() # Store the value in the cache
+    second_func()
+    
+    first_key = first_func.instance.get_key([], {})
+    second_key = second_func.instance.get_key([], {})
+    
+    # 1. Check that both keys exists
+    assert client.exists(first_key)
+    assert client.exists(second_key)
+    
+    # 2. They are different
+    assert first_key != second_key
+    
+    # 3. And stored values are different
+    assert first_func() != second_func()
