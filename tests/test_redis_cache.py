@@ -173,9 +173,28 @@ def test_invalidate_partial(cache):
     r1, v1 = add_multi_invalidate_partial(3, 4, 5)
     r2, v2 = add_multi_invalidate_partial(3, 4, 5)
     assert r1 == r2 and v1 == v2
-    add_multi_invalidate_partial.invalidate_partial(4)
+    add_multi_invalidate_partial.invalidate_partial(5)
     r3, v3 = add_multi_invalidate_partial(3, 4, 5)
     assert r3 == r1 and v3 != v1
+
+    # Test with a single element
+    r1, v1 = add_multi_invalidate_partial(1)
+    r2, v2 = add_multi_invalidate_partial(1)
+    assert r1 == r2 and v1 == v2
+    add_multi_invalidate_partial.invalidate_partial(1)
+    r3, v3 = add_multi_invalidate_partial(1)
+    assert r3 == r1 and v3 != v1
+
+    # Test with non-overlapping elements
+    r1, v1 = add_multi_invalidate_partial(6, 7, 8)
+    r2, v2 = add_multi_invalidate_partial(6, 7, 8)
+    assert r1 == r2 and v1 == v2
+    add_multi_invalidate_partial.invalidate_partial(8, 9, 10)
+    r3, v3 = add_multi_invalidate_partial(6, 7, 8)
+    assert r3 == r1 and v3 != v1
+    add_multi_invalidate_partial.invalidate_partial(9)
+    r4, v4 = add_multi_invalidate_partial(6, 7, 8)
+    assert r4 == r3 and v4 == v3
 
 
 def test_invalidate_all():

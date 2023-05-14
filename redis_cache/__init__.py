@@ -224,13 +224,22 @@ class CacheDecorator:
         """
         # First gather up a list of matching keys
         keys = set()
+        arg_sig = signature(self.original_fn)
+        variable_args = [
+            param.name for param in arg_sig.parameters.values()
+            if param.kind is param.VAR_POSITIONAL
+        ]
         for k in self.client.scan_iter(f'{self.get_full_prefix()}:*'):
             kstr = k.split(":", 2)[-1]
             key = self.deserialize_key(kstr)
-            vals_from_key = list(key.values())
             for a in args:
-                if a in vals_from_key:
-                    keys.add(k)
+                for k1, v1 in key.items():
+                    if k1 in variable_args:
+                        if a in v1:
+                            keys.add(k)
+                    else:
+                        if a == v1:
+                            keys.add(k)
             match_kwargs = []
             for name, val in kwargs.items():
                 match_kwargs.append(name in key and key[name] == val)
