@@ -165,6 +165,18 @@ def test_invalidate_partial(cache):
     r2, v2 = add_invalidate_partial(arg1=3, arg2=4)
     assert r == r2 and v != v2
 
+    # Test a function with any number of args
+    @cache.cache()
+    def add_multi_invalidate_partial(*args):
+        return sum(args), str(uuid.uuid4())
+
+    r1, v1 = add_multi_invalidate_partial(3, 4, 5)
+    r2, v2 = add_multi_invalidate_partial(3, 4, 5)
+    assert r1 == r2 and v1 == v2
+    add_multi_invalidate_partial.invalidate_partial(4)
+    r3, v3 = add_multi_invalidate_partial(3, 4, 5)
+    assert r3 == r1 and v3 != v1
+
 
 def test_invalidate_all():
     cache = RedisCache(redis_client=client)
@@ -285,13 +297,13 @@ def test_same_name_method(cache):
         @cache.cache()
         def static_method():
             return 'A'
-    
+
     class B:
         @staticmethod
         @cache.cache()
         def static_method():
             return 'B'
-    
+
     A.static_method() # Store the value in the cache
     B.static_method()
 
@@ -301,10 +313,10 @@ def test_same_name_method(cache):
     # 1. Check that both keys exists
     assert client.exists(key_a)
     assert client.exists(key_b)
-    
+
     # 2. They are different
     assert key_a != key_b
-    
+
     # 3. And stored values are different
     assert A.static_method() != B.static_method()
 
@@ -315,28 +327,28 @@ def test_same_name_inner_function(cache):
         def inner_function():
             return 'A'
         return inner_function
-    
+
     def b():
         @cache.cache()
         def inner_function():
             return 'B'
         return inner_function
-    
+
     first_func = a()
     second_func = b()
 
     first_func() # Store the value in the cache
     second_func()
-    
+
     first_key = first_func.instance.get_key([], {})
     second_key = second_func.instance.get_key([], {})
-    
+
     # 1. Check that both keys exists
     assert client.exists(first_key)
     assert client.exists(second_key)
-    
+
     # 2. They are different
     assert first_key != second_key
-    
+
     # 3. And stored values are different
     assert first_func() != second_func()
