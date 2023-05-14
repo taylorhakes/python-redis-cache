@@ -90,11 +90,7 @@ def chunks(iterable, n):
 
 
 class RedisCache:
-<<<<<<< HEAD
     def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, key_serializer=None, key_deserializer=None):
-=======
-    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None):
->>>>>>> 68f09bab88bca27a3565c1360cb75c464ddc7d31
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
@@ -148,11 +144,7 @@ class RedisCache:
         return deserialized_results
 
 class CacheDecorator:
-<<<<<<< HEAD
     def __init__(self, redis_client, prefix="rc", serializer=dumps, deserializer=loads, key_serializer=None, key_deserializer=None, ttl=0, limit=0, namespace=None):
-=======
-    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, ttl=0, limit=0, namespace=None):
->>>>>>> 68f09bab88bca27a3565c1360cb75c464ddc7d31
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
