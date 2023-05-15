@@ -253,13 +253,13 @@ def test_same_name_method(cache):
         @cache.cache()
         def static_method():
             return 'A'
-    
+
     class B:
         @staticmethod
         @cache.cache()
         def static_method():
             return 'B'
-    
+
     A.static_method() # Store the value in the cache
     B.static_method()
 
@@ -269,15 +269,50 @@ def test_same_name_method(cache):
     # 1. Check that both keys exists
     assert client.exists(key_a)
     assert client.exists(key_b)
-    
+
     # 2. They are different
     assert key_a != key_b
-    
+
     # 3. And stored values are different
     assert A.static_method() != B.static_method()
 
 
 def test_same_name_inner_function(cache):
+    def a():
+        @cache.cache()
+        def inner_function():
+            return 'A'
+
+        return inner_function
+
+    def b():
+        @cache.cache()
+        def inner_function():
+            return 'B'
+
+        return inner_function
+
+    first_func = a()
+    second_func = b()
+
+    first_func()  # Store the value in the cache
+    second_func()
+
+    first_key = first_func.instance.get_key([], {})
+    second_key = second_func.instance.get_key([], {})
+
+    # 1. Check that both keys exists
+    assert client.exists(first_key)
+    assert client.exists(second_key)
+
+    # 2. They are different
+    assert first_key != second_key
+
+    # 3. And stored values are different
+    assert first_func() != second_func()
+
+
+def test_get_args(cache):
     def fn1(a, b):
         pass
 
