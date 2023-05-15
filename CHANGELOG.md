@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v2.1.1 (2023-05-15)
+### Fix
+* **cache:** Fix bug in variable args ([`3dce0e7`](https://github.com/taylorhakes/python-redis-cache/commit/3dce0e774ee00b914bbbf5aaac6b5cce3589968f))
+
 ## v2.1.0 (2023-05-11)
 ### Breaking Fixes!
 All cache keys will change to accommodate for the following fixes
