@@ -2,7 +2,7 @@ import uuid
 import time
 
 from redis import StrictRedis
-from redis_cache import RedisCache
+from redis_cache import RedisCache, get_args
 from base64 import b64encode
 
 import pickle
@@ -278,33 +278,27 @@ def test_same_name_method(cache):
 
 
 def test_same_name_inner_function(cache):
-    def a():
-        @cache.cache()
-        def inner_function():
-            return 'A'
-        return inner_function
-    
-    def b():
-        @cache.cache()
-        def inner_function():
-            return 'B'
-        return inner_function
-    
-    first_func = a()
-    second_func = b()
+    def fn1(a, b):
+        pass
 
-    first_func() # Store the value in the cache
-    second_func()
-    
-    first_key = first_func.instance.get_key([], {})
-    second_key = second_func.instance.get_key([], {})
-    
-    # 1. Check that both keys exists
-    assert client.exists(first_key)
-    assert client.exists(second_key)
-    
-    # 2. They are different
-    assert first_key != second_key
-    
-    # 3. And stored values are different
-    assert first_func() != second_func()
+    def fn2(a, b, *c):
+        pass
+
+    def fn3(*c):
+        pass
+
+    def fn4(a, *c, d, **e):
+        pass
+
+    def fn5(*, d, **e):
+        pass
+
+    assert get_args(fn1, (1,2), {}) == dict(a=1, b=2)
+    assert get_args(fn1, [], dict(a=1, b=2)) == dict(a=1, b=2)
+    assert get_args(fn1, [1], dict(b=2)) == dict(a=1, b=2)
+    assert get_args(fn2, [1,2,3,4], {}) == dict(a=1, b=2, c=[3,4])
+    assert get_args(fn3, [1, 2, 3, 4], {}) == dict(c=[1, 2, 3, 4])
+    assert get_args(fn4, [1, 2, 3, 4], dict(d=5, f=6, g=7, h=8)) == dict(a=1, c=[2, 3, 4], d=5, e=dict(f=6, g=7, h=8))
+    assert get_args(fn5, [], dict(d=5, f=6, g=7, h=8)) == dict(d=5, e=dict(f=6, g=7, h=8))
+
+

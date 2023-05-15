@@ -15,10 +15,12 @@ def get_args(fn, args, kwargs):
     """
     arg_sig = signature(fn)
     standard_args = [param.name for param in arg_sig.parameters.values() if param.kind is param.POSITIONAL_OR_KEYWORD]
+    allowed_kwargs = [param.name for param in arg_sig.parameters.values() if param.kind is param.POSITIONAL_OR_KEYWORD or param.kind is param.KEYWORD_ONLY]
     variable_args = [param.name for param in arg_sig.parameters.values() if param.kind is param.VAR_POSITIONAL]
+    variable_kwargs = [param.name for param in arg_sig.parameters.values() if param.kind is param.VAR_KEYWORD]
     parsed_args = {}
 
-    if standard_args:
+    if standard_args or variable_args:
         for index, arg in enumerate(args):
             try:
                 parsed_args[standard_args[index]] = arg
@@ -26,14 +28,21 @@ def get_args(fn, args, kwargs):
                 # then fallback to using the positional varargs name
                 if variable_args:
                     vargs_name = variable_args[0]
-                    if not parsed_args[vargs_name]:
+                    if vargs_name not in parsed_args:
                         parsed_args[vargs_name] = []
 
                     parsed_args[vargs_name].append(arg)
 
-        # finally show the named varargs
+
     if kwargs:
-        parsed_args.update(kwargs)
+        for key, value in kwargs.items():
+            if key in allowed_kwargs:
+                parsed_args[key] = value
+            elif variable_kwargs:
+                vkwargs_name = variable_kwargs[0]
+                if vkwargs_name not in parsed_args:
+                    parsed_args[vkwargs_name] = {}
+                parsed_args[vkwargs_name][key] = value
 
     return parsed_args
 
