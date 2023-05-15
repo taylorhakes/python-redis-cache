@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v2.1.2 (2023-05-15)
+### Fix
+* **perf:** Update list to set ([`a4984bb`](https://github.com/taylorhakes/python-redis-cache/commit/a4984bb980ed40bb7c0cf077a69ece823becf3e2))
+
 ## v2.1.1 (2023-05-15)
 ### Fix
 * **cache:** Fix bug in variable args ([`3dce0e7`](https://github.com/taylorhakes/python-redis-cache/commit/3dce0e774ee00b914bbbf5aaac6b5cce3589968f))
