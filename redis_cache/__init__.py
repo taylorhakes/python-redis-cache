@@ -106,7 +106,7 @@ class RedisCache:
         self.deserializer = deserializer
         self.key_serializer = key_serializer
 
-    def cache(self, ttl=0, limit=0, namespace=None):
+    def cache(self, ttl=0, limit=0, namespace=None, fallback_exceptions=()):
         return CacheDecorator(
             redis_client=self.client,
             prefix=self.prefix,
@@ -115,7 +115,8 @@ class RedisCache:
             key_serializer=self.key_serializer,
             ttl=ttl,
             limit=limit,
-            namespace=namespace
+            namespace=namespace,
+            fallback_exceptions=fallback_exceptions
         )
 
     def mget(self, *fns_with_args):
@@ -151,7 +152,11 @@ class RedisCache:
         return deserialized_results
 
 class CacheDecorator:
-    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, ttl=0, limit=0, namespace=None):
+    def __init__(
+        self, redis_client, prefix="rc",
+        serializer=compact_dump, deserializer=loads, key_serializer=None,
+        ttl=0, limit=0, namespace=None, fallback_exceptions=()
+    ):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
@@ -160,6 +165,7 @@ class CacheDecorator:
         self.ttl = ttl
         self.limit = limit
         self.namespace = namespace
+        self.fallback_exceptions = fallback_exceptions
         self.keys_key = None
         self.original_fn = None
 
@@ -191,7 +197,13 @@ class CacheDecorator:
         def inner(*args, **kwargs):
             nonlocal self
             key = self.get_key(args, kwargs)
-            result = self.client.get(key)
+
+            try:
+                result = self.client.get(key)
+            except self.fallback_exceptions:
+                result = fn(*args, **kwargs)
+                return result
+            
             if not result:
                 result = fn(*args, **kwargs)
                 result_serialized = self.serializer(result)
