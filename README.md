@@ -55,7 +55,7 @@ https://security.stackexchange.com/questions/183966/safely-load-a-pickle-file
 cache = RedisCache(redis_client, prefix="rc", serializer=dumps, deserializer=loads)
 
 # Cache decorator to go on functions, see above
-cache.cache(ttl=..., limit=..., namespace=...) -> Callable[[Callable], Callable]
+cache.cache(ttl=..., limit=..., namespace=..., fallback_exceptions=(...,)) -> Callable[[Callable], Callable]
 
 # Get multiple values from the cache
 cache.mget([{"fn": my_func, "args": [1,2], "kwargs": {}}, ...]) -> List[Any]
@@ -78,3 +78,4 @@ cached_func.invalidate_all()
 - serializer/deserializer - functions to convert arguments and return value to a string (user JSON by default)
 - ttl - The time in seconds to cache the return value
 - namespace - The string namespace of the cache. This is useful for allowing multiple functions to use the same cache. By default its `f'{function.__module__}.{function.__file__}'`
+- fallback_exceptions - A tuple which contains the exceptions to be handled within the cache decorator. When one of the listed exceptions occurs and results in a failed value retrieval from Redis, it will not directly cause the retrieval to fail. Instead, it will call the original value function and skip the behavior of storing the value in Redis. This setting allows the program to continue functioning normally by using the original value function when Redis is unexpectedly unavailable. To always use the original function when Redis value retrieval fails, set it to (Exception,). The default value is (), meaning that it will not actively fallback to the original value function when an exception occurs.
