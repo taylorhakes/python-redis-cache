@@ -337,3 +337,36 @@ def test_get_args(cache):
     assert get_args(fn5, [], dict(d=5, f=6, g=7, h=8)) == dict(d=5, e=dict(f=6, g=7, h=8))
 
 
+# Simulate the environment where redis is not available
+# Only test the CacheDecorator since the exception handling should be done inside the decorator
+# The exceptions of other methods, e.g. invalidate and invalidate_all, can be easily handled by using try-except outside
+# The uuid4 verifier is not tested under this environment
+@pytest.fixture()
+def no_redis_cache():
+    return RedisCache(redis_client=None)
+
+
+def add_func_no_redis(n1, n2):
+    """ Add function
+    Add n1 to n2
+
+    Returns:
+        int
+    """
+    return n1 + n2
+
+
+def test_basic_check_no_redis(no_redis_cache):
+    @no_redis_cache.cache(fallback_exceptions=(Exception,))
+    def add_basic(arg1, arg2):
+        return add_func_no_redis(arg1, arg2)
+
+    r_3_4 = add_basic(3, 4)
+    r_3_4_cached = add_basic(3, 4)
+    # Make sure the same cache is used for kwargs
+    r_3_4_cached_kwargs = add_basic(arg1=3, arg2=4)
+    r_3_4_cached_mix = add_basic(3, arg2=4)
+    r_5_5 = add_basic(5, 5)
+
+    assert 7 == r_3_4 == r_3_4_cached == r_3_4_cached_kwargs == r_3_4_cached_mix
+    assert 10 == r_5_5 != r_3_4
