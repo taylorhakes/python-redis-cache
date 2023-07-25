@@ -53,7 +53,7 @@ https://security.stackexchange.com/questions/183966/safely-load-a-pickle-file
 ## API
 ```python
 # Create the redis cache
-cache = RedisCache(redis_client, prefix="rc", serializer=dumps, deserializer=loads)
+cache = RedisCache(redis_client, prefix="rc", serializer=dumps, deserializer=loads, key_serializer=None, exception_handler=None)
 
 # Cache decorator to go on functions, see above
 cache.cache(ttl=..., limit=..., namespace=...) -> Callable[[Callable], Callable]
@@ -79,4 +79,4 @@ cached_func.invalidate_all()
 - serializer/deserializer - functions to convert arguments and return value to a string (user JSON by default)
 - ttl - The time in seconds to cache the return value
 - namespace - The string namespace of the cache. This is useful for allowing multiple functions to use the same cache. By default its `f'{function.__module__}.{function.__file__}'`
-- exception_handler - Function to handle Redis cache exceptions. This allows you to fall back to calling the original function or logging exceptions. Function has the following signature `exception_handler(exception: Exception, function: Callable, args: List, kwargs: Dict) -> Any`. If not defined it will raise the exception and not call the original function. If using this handler, reraise the exception in the function to stop execution of the function. All return results will be used even if `None`
+- exception_handler - Function to handle Redis cache exceptions. This allows you to fall back to calling the original function or logging exceptions. Function has the following signature `exception_handler(exception: Exception, function: Callable, args: List, kwargs: Dict) -> Any`. If using this handler, reraise the exception in the handler to stop execution of the function. All return results will be used even if `None`. If handler not defined, it will raise the exception and not call the original function.
