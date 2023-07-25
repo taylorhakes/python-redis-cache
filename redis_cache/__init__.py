@@ -99,14 +99,15 @@ def chunks(iterable, n):
 
 
 class RedisCache:
-    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None):
+    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, exception_handler=None):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
         self.deserializer = deserializer
         self.key_serializer = key_serializer
+        self.exception_handler = exception_handler
 
-    def cache(self, ttl=0, limit=0, namespace=None):
+    def cache(self, ttl=0, limit=0, namespace=None, exception_handler=None):
         return CacheDecorator(
             redis_client=self.client,
             prefix=self.prefix,
@@ -115,7 +116,8 @@ class RedisCache:
             key_serializer=self.key_serializer,
             ttl=ttl,
             limit=limit,
-            namespace=namespace
+            namespace=namespace,
+            exception_handler=exception_handler or self.exception_handler
         )
 
     def mget(self, *fns_with_args):
@@ -151,7 +153,7 @@ class RedisCache:
         return deserialized_results
 
 class CacheDecorator:
-    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, ttl=0, limit=0, namespace=None):
+    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, ttl=0, limit=0, namespace=None, exception_handler=None):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
@@ -160,8 +162,10 @@ class CacheDecorator:
         self.ttl = ttl
         self.limit = limit
         self.namespace = namespace
+        self.exception_handler = exception_handler
         self.keys_key = None
         self.original_fn = None
+
 
     def get_full_prefix(self):
         return f'{{{self.prefix}:{self.namespace}}}'
@@ -191,14 +195,24 @@ class CacheDecorator:
         def inner(*args, **kwargs):
             nonlocal self
             key = self.get_key(args, kwargs)
-            result = self.client.get(key)
-            if not result:
-                result = fn(*args, **kwargs)
-                result_serialized = self.serializer(result)
+            result = None
+
+            exception_handled = False
+            try:
+                result = self.client.get(key)
+            except Exception as e:
+                if self.exception_handler:
+                    # This allows people to handle failures in cache lookups
+                    exception_handled = True
+                    parsed_result = self.exception_handler(e, self.original_fn, args, kwargs)
+            if result:
+                parsed_result = self.deserializer(result)
+            elif not exception_handled:
+                parsed_result = fn(*args, **kwargs)
+                result_serialized = self.serializer(parsed_result)
                 get_cache_lua_fn(self.client)(keys=[key, self.keys_key], args=[result_serialized, self.ttl, self.limit])
-            else:
-                result = self.deserializer(result)
-            return result
+
+            return parsed_result
 
         inner.invalidate = self.invalidate
         inner.invalidate_all = self.invalidate_all
