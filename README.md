@@ -8,7 +8,7 @@ Simple redis cache for Python functions
 
 ### Requirements
 - Redis 5+
-- Python 3.7+
+- Python 3.8+ (should work in Python 3.6+, but not tested)
 
 ## How to install
 ```
