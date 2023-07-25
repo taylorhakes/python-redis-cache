@@ -45,6 +45,7 @@ my_func.invalidate_all()
 ## Limitations and things to know
 Arguments and return types must be JSON serializable by default. You can override the serializer, but be careful with using Pickle. Make sure you understand the security risks. Pickle should not be used with untrusted values.
 https://security.stackexchange.com/questions/183966/safely-load-a-pickle-file
+`decode_responses` parameter must be `False` in redis client if you use pickle.
 
 - **ttl** - is based on the time from when it's first inserted in the cache, not based on the last access
 - **limit** - The limit will revoke keys (once it hits the limit) based on FIFO, not based on LRU
