@@ -78,3 +78,4 @@ cached_func.invalidate_all()
 - serializer/deserializer - functions to convert arguments and return value to a string (user JSON by default)
 - ttl - The time in seconds to cache the return value
 - namespace - The string namespace of the cache. This is useful for allowing multiple functions to use the same cache. By default its `f'{function.__module__}.{function.__file__}'`
+- exception_handler - Function to handle Redis cache exceptions. This allows you to fall back to calling the original function or logging exceptions. Function has the following signature `exception_handler(exception: Exception, function: Callable, args: List, kwargs: Dict) -> Any`. If not defined it will raise the exception and not call the original function. If using this handler, reraise the exception in the function to stop execution of the function. All return results will be used even if `None`
