@@ -2,6 +2,7 @@ from functools import wraps
 from json import dumps, loads
 from base64 import b64encode
 from inspect import signature
+from redis.sentinel import Sentinel
 
 def compact_dump(value):
     return dumps(value, separators=(',', ':'))
@@ -97,20 +98,37 @@ def chunks(iterable, n):
 
         yield elements
 
+def get_redis_master(sentinel, master_name=None):
+    if isinstance(sentinel, Sentinel):
+        if master_name:
+            try:
+                return sentinel.master_for(master_name)
+            except ConnectionError:
+                return None
+        else:
+            raise ValueError("Master name should be specified when using Sentinel.")
+    else:
+        return sentinel
 
 class RedisCache:
-    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, exception_handler=None):
-        self.client = redis_client
+    def __init__(self, redis_client, prefix="rc", master_name="mymaster", serializer=compact_dump, deserializer=loads, key_serializer=None, exception_handler=None):
+        self.redis_client = redis_client
         self.prefix = prefix
+        self.master_name = master_name
         self.serializer = serializer
         self.deserializer = deserializer
         self.key_serializer = key_serializer
         self.exception_handler = exception_handler
 
+    @property
+    def client(self):
+        return get_redis_master(self.redis_client, self.master_name)
+
     def cache(self, ttl=0, limit=0, namespace=None, exception_handler=None):
         return CacheDecorator(
-            redis_client=self.client,
+            redis_client=self.redis_client,
             prefix=self.prefix,
+            master_name=self.master_name,
             serializer=self.serializer,
             deserializer=self.deserializer,
             key_serializer=self.key_serializer,
@@ -153,9 +171,10 @@ class RedisCache:
         return deserialized_results
 
 class CacheDecorator:
-    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, ttl=0, limit=0, namespace=None, exception_handler=None):
-        self.client = redis_client
+    def __init__(self, redis_client, prefix="rc", master_name=None, serializer=compact_dump, deserializer=loads, key_serializer=None, ttl=0, limit=0, namespace=None, exception_handler=None):
+        self.redis_client = redis_client
         self.prefix = prefix
+        self.master_name = master_name
         self.serializer = serializer
         self.key_serializer = key_serializer
         self.deserializer = deserializer
@@ -165,6 +184,10 @@ class CacheDecorator:
         self.exception_handler = exception_handler
         self.keys_key = None
         self.original_fn = None
+
+    @property
+    def client(self):
+        return get_redis_master(self.redis_client, self.master_name)
 
 
     def get_full_prefix(self):

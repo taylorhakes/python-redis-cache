@@ -10,14 +10,30 @@ import pytest
 import zlib
 
 
-redis_host = "redis-test-host"
-client = StrictRedis(host=redis_host, decode_responses=True)
-client_no_decode = StrictRedis(host=redis_host)
+import os
+from redis.sentinel import Sentinel
+
+if os.environ.get('TEST_SENTINEL'):
+    print("TEST_SENTINEL set, using redis-sentinel1")
+    sentinel = Sentinel([('redis-sentinel1', 26379)], 
+                        password='topsecret', 
+                        sentinel_kwargs={"password": "sentinel-topsecret"}
+                        )
+    client = sentinel
+    client_no_decode = sentinel
+else:
+    print("TEST_SENTINEL not set, using redis-test-host")
+    redis_host = "redis-test-host"
+    client = StrictRedis(host=redis_host, decode_responses=True)
+    client_no_decode = StrictRedis(host=redis_host)
 
 
 @pytest.fixture(scope="session", autouse=True)
 def clear_cache(request):
-    client.flushall()
+    if isinstance(client, Sentinel):
+        client.master_for('mymaster').flushdb()
+    else:
+        client.flushdb()
 
 
 @pytest.fixture()
@@ -233,7 +249,7 @@ def test_custom_key_serializer():
     encoded_args = b64encode("{'arg1': 2, 'arg2': 3}".encode('utf-8')).decode('utf-8')
 
     assert r1 == r2
-    assert client.exists(f'{{rc:test_redis_cache.test_custom_key_serializer.<locals>.add_custom_key_serializer}}:{encoded_args}')
+    assert cache.client.exists(f'{{rc:test_redis_cache.test_custom_key_serializer.<locals>.add_custom_key_serializer}}:{encoded_args}')
 
 
 def test_basic_mget(cache):
@@ -267,8 +283,8 @@ def test_same_name_method(cache):
     key_b = B.static_method.instance.get_key([], {})
 
     # 1. Check that both keys exists
-    assert client.exists(key_a)
-    assert client.exists(key_b)
+    assert cache.client.exists(key_a)
+    assert cache.client.exists(key_b)
 
     # 2. They are different
     assert key_a != key_b
@@ -302,8 +318,8 @@ def test_same_name_inner_function(cache):
     second_key = second_func.instance.get_key([], {})
 
     # 1. Check that both keys exists
-    assert client.exists(first_key)
-    assert client.exists(second_key)
+    assert cache.client.exists(first_key)
+    assert cache.client.exists(second_key)
 
     # 2. They are different
     assert first_key != second_key

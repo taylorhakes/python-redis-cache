@@ -1,0 +1,52 @@
+version: '3.7'
+services:
+  test:
+    image: python:${PY_VERSION:-3.9.16}
+    volumes:
+      - .:/python
+    command: ${TEST_COMMAND:-python setup.py test}
+    stdin_open: true
+    tty: true
+    working_dir: /python
+    environment:
+      - TEST_SENTINEL=true
+    depends_on:
+      - redis-master
+      - redis-slave1
+      - redis-slave2
+      - redis-sentinel1
+      - redis-sentinel2
+      - redis-sentinel3
+
+  redis-master:
+    image: redis:${REDIS_VERSION:-5}
+    command: redis-server --requirepass topsecret
+
+  redis-slave1:
+    image: redis:${REDIS_VERSION:-5}
+    command: redis-server --slaveof redis-master 6379 --requirepass topsecret --masterauth topsecret
+
+  redis-slave2:
+    image: redis:${REDIS_VERSION:-5}
+    command: redis-server --slaveof redis-master 6379 --requirepass topsecret --masterauth topsecret
+
+  redis-sentinel1:
+    image: bitnami/redis-sentinel:6.0
+    environment:
+      - REDIS_MASTER_HOST=redis-master
+      - REDIS_MASTER_PASSWORD=topsecret
+      - REDIS_SENTINEL_PASSWORD=sentinel-topsecret
+
+  redis-sentinel2:
+    image: bitnami/redis-sentinel:6.0
+    environment:
+      - REDIS_MASTER_HOST=redis-master
+      - REDIS_MASTER_PASSWORD=topsecret
+      - REDIS_SENTINEL_PASSWORD=sentinel-topsecret
+
+  redis-sentinel3:
+    image: bitnami/redis-sentinel:6.0
+    environment:
+      - REDIS_MASTER_HOST=redis-master
+      - REDIS_MASTER_PASSWORD=topsecret
+      - REDIS_SENTINEL_PASSWORD=sentinel-topsecret

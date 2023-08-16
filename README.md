@@ -4,26 +4,53 @@
 [![license](https://img.shields.io/github/license/taylorhakes/python-redis-cache.svg)](https://github.com/taylorhakes/python-redis-cache/blob/master/LICENSE)
 
 # python-redis-cache
+
 Simple redis cache for Python functions
 
 ### Requirements
+
 - Redis 5+
 - Python 3.8+ (should work in Python 3.6+, but not tested)
 
 ## How to install
+
 ```
 pip install python-redis-cache
 ```
 
 ## How to use
+
+The Redis cache client can either connect to a standalone Redis server or to a sentinel managed Redis setup. Here's how you can initialize the cache client for these scenarios:
+
+### Standalone Redis setup
+
 ```python
 from redis import StrictRedis
 from redis_cache import RedisCache
 
 client = StrictRedis(host="redis", decode_responses=True)
 cache = RedisCache(redis_client=client)
+```
 
+### Sentinel Managed Redis setup
 
+```python
+from redis.sentinel import Sentinel
+from redis_cache import RedisCache
+
+# Here, redis-sentinel1 is the sentinel service name and mymaster is the name
+# of the master service.
+sentinel = Sentinel([('redis-sentinel1', 26379)],
+    password='topsecret',                               # redis server password
+    sentinel_kwargs={"password": "sentinel-topsecret"}  # sentinel password
+)
+
+cache = RedisCache(redis_client=sentinel)
+```
+
+### Using the cache
+
+```python
 @cache.cache()
 def my_func(arg1, arg2):
     result = some_expensive_operation()
@@ -43,6 +70,7 @@ my_func.invalidate_all()
 ```
 
 ## Limitations and things to know
+
 Arguments and return types must be JSON serializable by default. You can override the serializer, but be careful with using Pickle. Make sure you understand the security risks. Pickle should not be used with untrusted values.
 https://security.stackexchange.com/questions/183966/safely-load-a-pickle-file
 `decode_responses` parameter must be `False` in redis client if you use pickle.
@@ -51,6 +79,7 @@ https://security.stackexchange.com/questions/183966/safely-load-a-pickle-file
 - **limit** - The limit will revoke keys (once it hits the limit) based on FIFO, not based on LRU
 
 ## API
+
 ```python
 # Create the redis cache
 cache = RedisCache(redis_client, prefix="rc", serializer=dumps, deserializer=loads, key_serializer=None, exception_handler=None)
