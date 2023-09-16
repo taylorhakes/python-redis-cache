@@ -2,6 +2,13 @@
 
 
 
+## v2.2.3 (2023-09-16)
+
+### Fix
+
+* fix(build): fetch depth ([`18fd8af`](https://github.com/taylorhakes/python-redis-cache/commit/18fd8af81759c4e94b772bd8360b42c107da786c))
+
+
 ## v2.2.2 (2023-09-16)
 
 ### Fix
