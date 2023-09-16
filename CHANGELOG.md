@@ -2,6 +2,13 @@
 
 
 
+## v2.2.4 (2023-09-16)
+
+### Fix
+
+* fix(release): fix version change ([`d434cb6`](https://github.com/taylorhakes/python-redis-cache/commit/d434cb6dacae29022eb7176f59777225f8b2c782))
+
+
 ## v2.2.3 (2023-09-16)
 
 ### Fix
