@@ -6,5 +6,5 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.semantic_release]
-version_variable = "setup.py:__version__"
+version_variables = ["setup.py:__version__"]
 branch = "master"
