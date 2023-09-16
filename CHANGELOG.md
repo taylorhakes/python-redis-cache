@@ -2,6 +2,27 @@
 
 
 
+## v2.2.1 (2023-09-16)
+
+### Documentation
+
+* docs: remove version badge ([`f0810d2`](https://github.com/taylorhakes/python-redis-cache/commit/f0810d2ca42325592aa4b98c01608f022fcd900d))
+
+* docs: update readme badge ([`bdbe5e1`](https://github.com/taylorhakes/python-redis-cache/commit/bdbe5e17ccd3926c58ffd69b58b6775ca71bbc56))
+
+* docs(readme): add exception_handler into signature ([`8bb9193`](https://github.com/taylorhakes/python-redis-cache/commit/8bb9193014c2b556b547871aeb572ea3ec447505))
+
+* docs(readme): add note about decode_responses ([`9471fb0`](https://github.com/taylorhakes/python-redis-cache/commit/9471fb0b660820cbf7a3a00b3ce8e75d7a50a79b))
+
+* docs(readme): update docs about exception_handler parameter ([`70d48c1`](https://github.com/taylorhakes/python-redis-cache/commit/70d48c1cf89505915972fae3bae57e8b07945e4c))
+
+### Fix
+
+* fix(build): Permissions ([`0e45716`](https://github.com/taylorhakes/python-redis-cache/commit/0e457165b2d7b48178ae3c2fed521e507ef6ae51))
+
+* fix(release): add pypi distribution ([`508f5a8`](https://github.com/taylorhakes/python-redis-cache/commit/508f5a87c73adf90da337ce9aad7791d33f24742))
+
+
 ## v2.2.0 (2023-07-25)
 
 ### Feature
