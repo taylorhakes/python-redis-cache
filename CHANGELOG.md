@@ -2,6 +2,13 @@
 
 
 
+## v2.2.2 (2023-09-16)
+
+### Fix
+
+* fix(release): fix missing permission ([`d4136e1`](https://github.com/taylorhakes/python-redis-cache/commit/d4136e1c6768fd7b635186aca0cd4b1f7011470b))
+
+
 ## v2.2.1 (2023-09-16)
 
 ### Documentation
