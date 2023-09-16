@@ -9,7 +9,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     concurrency: release
-
+    environment: production
     steps:
     - uses: actions/checkout@v2
       with:
@@ -17,7 +17,10 @@ jobs:
         token: ${{ secrets.GH_TOKEN }}
 
     - name: Python Semantic Release
+      id: semantic_release
       uses: taylorhakes/python-semantic-release@master
       with:
         github_token: ${{ secrets.GH_TOKEN }}
-        pypi_token: ${{ secrets.PYPI_TOKEN }}
+    - name: Publish distribution 📦 to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      if: steps.semantic_release.outputs.released == 'true'
