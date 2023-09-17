@@ -2,6 +2,13 @@
 
 
 
+## v2.2.5 (2023-09-17)
+
+### Fix
+
+* fix(build): update release order ([`db88117`](https://github.com/taylorhakes/python-redis-cache/commit/db88117f060fb6fc0515cbf2ee3485377d5e95a8))
+
+
 ## v2.2.4 (2023-09-16)
 
 ### Fix
