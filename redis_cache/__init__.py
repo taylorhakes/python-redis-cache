@@ -4,7 +4,7 @@ from base64 import b64encode
 from inspect import signature
 
 def compact_dump(value):
-    return dumps(value, separators=(',', ':'))
+    return dumps(value, separators=(',', ':'), sort_keys=True)
 
 def get_args(fn, args, kwargs):
     """
@@ -168,7 +168,7 @@ class CacheDecorator:
 
 
     def get_full_prefix(self):
-        return f'{{{self.prefix}:{self.namespace}}}'
+        return f'{self.prefix}:{self.namespace}'
 
     def get_key(self, args, kwargs):
         normalized_args = get_args(self.original_fn, args, kwargs)
