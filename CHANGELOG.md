@@ -2,6 +2,15 @@
 
 
 
+## v3.0.0 (2024-01-09)
+
+### Breaking
+
+* feat(keys): keep keys sorted and fix key format (#28)
+
+BREAKING CHANGE: key format fix ([`aa554ee`](https://github.com/taylorhakes/python-redis-cache/commit/aa554ee10cbb8660844d841cc912947136cd3623))
+
+
 ## v2.2.5 (2023-09-17)
 
 ### Fix
