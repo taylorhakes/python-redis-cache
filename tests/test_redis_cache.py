@@ -233,7 +233,7 @@ def test_custom_key_serializer():
     encoded_args = b64encode("{'arg1': 2, 'arg2': 3}".encode('utf-8')).decode('utf-8')
 
     assert r1 == r2
-    assert client.exists(f'rc:test_redis_cache.test_custom_key_serializer.<locals>.add_custom_key_serializer:{encoded_args}')
+    assert client.exists(f'{{rc:test_redis_cache.test_custom_key_serializer.<locals>.add_custom_key_serializer}}:{encoded_args}')
 
 
 def test_basic_mget(cache):
