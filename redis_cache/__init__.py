@@ -168,7 +168,11 @@ class CacheDecorator:
 
 
     def get_full_prefix(self):
-        return f'{self.prefix}:{self.namespace}'
+        # Redis cluster requires keys operated in batch to be in the same key space. Redis cluster hashes the keys to
+        # determine the key space. The braces specify which part of the key to hash (instead of the whole key).
+        # See https://github.com/taylorhakes/python-redis-cache/issues/29  The `{prefix}:keys` and `{prefix}:args`
+        # need to be in the same key space.
+        return f'{{{self.prefix}:{self.namespace}}}'
 
     def get_key(self, args, kwargs):
         normalized_args = get_args(self.original_fn, args, kwargs)
