@@ -2,6 +2,13 @@
 
 
 
+## v3.0.1 (2024-01-10)
+
+### Fix
+
+* fix(keys): update keys to be in same key space (#30) ([`8b03459`](https://github.com/taylorhakes/python-redis-cache/commit/8b03459a253bee5fd6cd1aadd14aa0d5f1e78198))
+
+
 ## v3.0.0 (2024-01-09)
 
 ### Breaking
