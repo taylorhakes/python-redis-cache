@@ -235,6 +235,25 @@ def test_custom_key_serializer():
     assert r1 == r2
     assert client.exists(f'{{rc:test_redis_cache.test_custom_key_serializer.<locals>.add_custom_key_serializer}}:{encoded_args}')
 
+def test_support_cluster_false():
+
+    cache = RedisCache(
+        redis_client=client,
+        support_cluster=False
+    )
+
+    @cache.cache()
+    def add_custom_key_serializer(arg1, arg2):
+        return arg1 + arg2
+
+    r1 = add_custom_key_serializer(2, 3)
+    r2 = add_custom_key_serializer(2, 3)
+
+    encoded_args = b64encode('{"arg1":2,"arg2":3}'.encode('utf-8')).decode('utf-8')
+
+    assert r1 == r2
+    assert client.exists(f'rc:test_redis_cache.test_support_cluster_false.<locals>.add_custom_key_serializer:{encoded_args}')
+
 
 def test_basic_mget(cache):
     @cache.cache()

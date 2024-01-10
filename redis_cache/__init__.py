@@ -99,13 +99,14 @@ def chunks(iterable, n):
 
 
 class RedisCache:
-    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, exception_handler=None):
+    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, support_cluster=True, exception_handler=None):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
         self.deserializer = deserializer
         self.key_serializer = key_serializer
         self.exception_handler = exception_handler
+        self.support_cluster = support_cluster
 
     def cache(self, ttl=0, limit=0, namespace=None, exception_handler=None):
         return CacheDecorator(
@@ -117,6 +118,7 @@ class RedisCache:
             ttl=ttl,
             limit=limit,
             namespace=namespace,
+            support_cluster=self.support_cluster,
             exception_handler=exception_handler or self.exception_handler
         )
 
@@ -153,7 +155,7 @@ class RedisCache:
         return deserialized_results
 
 class CacheDecorator:
-    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, ttl=0, limit=0, namespace=None, exception_handler=None):
+    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, ttl=0, limit=0, namespace=None, support_cluster=True, exception_handler=None):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
@@ -163,16 +165,20 @@ class CacheDecorator:
         self.limit = limit
         self.namespace = namespace
         self.exception_handler = exception_handler
+        self.support_cluster = support_cluster
         self.keys_key = None
         self.original_fn = None
 
 
     def get_full_prefix(self):
-        # Redis cluster requires keys operated in batch to be in the same key space. Redis cluster hashes the keys to
-        # determine the key space. The braces specify which part of the key to hash (instead of the whole key).
-        # See https://github.com/taylorhakes/python-redis-cache/issues/29  The `{prefix}:keys` and `{prefix}:args`
-        # need to be in the same key space.
-        return f'{{{self.prefix}:{self.namespace}}}'
+        if self.support_cluster:
+            # Redis cluster requires keys operated in batch to be in the same key space. Redis cluster hashes the keys to
+            # determine the key space. The braces specify which part of the key to hash (instead of the whole key).
+            # See https://github.com/taylorhakes/python-redis-cache/issues/29  The `{prefix}:keys` and `{prefix}:args`
+            # need to be in the same key space.
+            return f'{{{self.prefix}:{self.namespace}}}'
+        else:
+            return f'{self.prefix}:{self.namespace}'
 
     def get_key(self, args, kwargs):
         normalized_args = get_args(self.original_fn, args, kwargs)
