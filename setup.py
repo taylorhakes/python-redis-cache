@@ -19,6 +19,7 @@ setup(
     license='MIT',
     python_requires='>=3.6',
     packages=find_packages(),
+    install_requires=['redis'],
     setup_requires=['pytest-runner==5.3.1'],
     tests_require=['pytest==6.2.5', 'redis==4.4.4'],
 )
