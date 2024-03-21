@@ -2,6 +2,13 @@
 
 
 
+## v3.0.2 (2024-03-21)
+
+### Fix
+
+* fix(build): add redis to install_requires (#33) ([`3a21ccd`](https://github.com/taylorhakes/python-redis-cache/commit/3a21ccd908993ffe169f67d636ec9e41a924016f))
+
+
 ## v3.0.1 (2024-01-10)
 
 ### Fix
