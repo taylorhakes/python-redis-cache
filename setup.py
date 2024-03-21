@@ -6,7 +6,7 @@ this_directory = path.abspath(path.dirname(__file__))
 with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-__version__ = "3.0.2"
+__version__ = "3.1.0"
 
 setup(
     name='python-redis-cache',

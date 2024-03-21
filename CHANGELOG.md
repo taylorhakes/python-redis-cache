@@ -2,6 +2,13 @@
 
 
 
+## v3.1.0 (2024-03-21)
+
+### Feature
+
+* feat(cluster): add ability to disable braces by not supporting cluster ([`939f046`](https://github.com/taylorhakes/python-redis-cache/commit/939f046922be7421ff39d4a29fe5c3be631a1179))
+
+
 ## v3.0.2 (2024-03-21)
 
 ### Fix
