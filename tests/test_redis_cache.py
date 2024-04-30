@@ -24,6 +24,10 @@ def clear_cache(request):
 def cache():
     return RedisCache(redis_client=client)
 
+@pytest.fixture()
+def cache_with_default_ttl():
+    return RedisCache(redis_client=client, default_ttl=5)
+
 
 def add_func(n1, n2):
     """ Add function
@@ -66,6 +70,33 @@ def test_ttl(cache):
     assert 7 == r_1 == r_2 == r_3
     assert v_1 == v_2 != v_3
 
+def test_default_ttl(cache_with_default_ttl):
+    @cache_with_default_ttl.cache()
+    def add_ttl(arg1, arg2):
+        return add_func(arg1, arg2)
+
+    r_1, v_1 = add_ttl(3, 4)
+    r_2, v_2 = add_ttl(3, 4)
+    time.sleep(6)
+
+    r_3, v_3 = add_ttl(3, 4)
+
+    assert 7 == r_1 == r_2 == r_3
+    assert v_1 == v_2 != v_3
+
+def test_default_ttl_override(cache_with_default_ttl):
+    @cache_with_default_ttl.cache(ttl=1)
+    def add_ttl(arg1, arg2):
+        return add_func(arg1, arg2)
+
+    r_1, v_1 = add_ttl(3, 4)
+    r_2, v_2 = add_ttl(3, 4)
+    time.sleep(2)
+
+    r_3, v_3 = add_ttl(3, 4)
+
+    assert 7 == r_1 == r_2 == r_3
+    assert v_1 == v_2 != v_3
 
 def test_limit(cache):
     @cache.cache(limit=2)

@@ -2,6 +2,7 @@ from functools import wraps
 from json import dumps, loads
 from base64 import b64encode
 from inspect import signature
+from typing import Optional
 
 def compact_dump(value):
     return dumps(value, separators=(',', ':'), sort_keys=True)
@@ -99,7 +100,7 @@ def chunks(iterable, n):
 
 
 class RedisCache:
-    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, support_cluster=True, exception_handler=None):
+    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, support_cluster=True, exception_handler=None, default_ttl=0):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
@@ -107,8 +108,11 @@ class RedisCache:
         self.key_serializer = key_serializer
         self.exception_handler = exception_handler
         self.support_cluster = support_cluster
+        self.default_ttl = default_ttl
 
-    def cache(self, ttl=0, limit=0, namespace=None, exception_handler=None):
+    def cache(self, ttl: Optional[int]=None, limit=0, namespace=None, exception_handler=None):
+        if not ttl:
+            ttl = self.default_ttl
         return CacheDecorator(
             redis_client=self.client,
             prefix=self.prefix,
