@@ -77,6 +77,7 @@ def test_default_ttl(cache_with_default_ttl):
 
     r_1, v_1 = add_ttl(3, 4)
     r_2, v_2 = add_ttl(3, 4)
+    # Default ttl is set to 5 sec so it should be deleted by 6
     time.sleep(6)
 
     r_3, v_3 = add_ttl(3, 4)
@@ -91,6 +92,7 @@ def test_default_ttl_override(cache_with_default_ttl):
 
     r_1, v_1 = add_ttl(3, 4)
     r_2, v_2 = add_ttl(3, 4)
+    # Default ttl is overriden to 1 so it should be deleted by 2
     time.sleep(2)
 
     r_3, v_3 = add_ttl(3, 4)
