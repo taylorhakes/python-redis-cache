@@ -99,7 +99,7 @@ def chunks(iterable, n):
 
 
 class RedisCache:
-    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, support_cluster=True, exception_handler=None):
+    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, support_cluster=True, exception_handler=None, active:bool=True):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
@@ -107,6 +107,7 @@ class RedisCache:
         self.key_serializer = key_serializer
         self.exception_handler = exception_handler
         self.support_cluster = support_cluster
+        self.active = active
 
     def cache(self, ttl=0, limit=0, namespace=None, exception_handler=None):
         return CacheDecorator(
@@ -119,7 +120,8 @@ class RedisCache:
             limit=limit,
             namespace=namespace,
             support_cluster=self.support_cluster,
-            exception_handler=exception_handler or self.exception_handler
+            exception_handler=exception_handler or self.exception_handler,
+            active=self.active
         )
 
     def mget(self, *fns_with_args):
@@ -155,7 +157,7 @@ class RedisCache:
         return deserialized_results
 
 class CacheDecorator:
-    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, ttl=0, limit=0, namespace=None, support_cluster=True, exception_handler=None):
+    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, ttl=0, limit=0, namespace=None, support_cluster=True, exception_handler=None, active:bool=True):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
@@ -168,6 +170,7 @@ class CacheDecorator:
         self.support_cluster = support_cluster
         self.keys_key = None
         self.original_fn = None
+        self.active=active
 
 
     def get_full_prefix(self):
@@ -204,6 +207,9 @@ class CacheDecorator:
         @wraps(fn)
         def inner(*args, **kwargs):
             nonlocal self
+            # Return the original function if we're not in active mode
+            if not self.active:
+                return fn(*args, **kwargs)
             key = self.get_key(args, kwargs)
             result = None
 

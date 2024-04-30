@@ -25,6 +25,10 @@ def cache():
     return RedisCache(redis_client=client)
 
 
+@pytest.fixture()
+def inactive_cache():
+    return RedisCache(redis_client=client, active=False)
+
 def add_func(n1, n2):
     """ Add function
     Add n1 to n2 and return a uuid4 unique verifier
@@ -66,6 +70,17 @@ def test_ttl(cache):
     assert 7 == r_1 == r_2 == r_3
     assert v_1 == v_2 != v_3
 
+def test_inactive_cache(inactive_cache):
+    @inactive_cache.cache(ttl=2)
+    def add_ttl(arg1, arg2):
+        return add_func(arg1, arg2)
+
+    r_1, v_1 = add_ttl(3, 4)
+    r_2, v_2 = add_ttl(3, 4)
+
+    assert 7 == r_1 == r_2
+    # In inactive scenario the calls should return different uuids
+    assert v_1 != v_2
 
 def test_limit(cache):
     @cache.cache(limit=2)
