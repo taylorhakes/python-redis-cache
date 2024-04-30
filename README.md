@@ -71,6 +71,8 @@ cached_func.invalidate_all()
 - namespace - The string namespace of the cache. This is useful for allowing multiple functions to use the same cache. By default its `f'{function.__module__}.{function.__file__}'`
 - exception_handler - Function to handle Redis cache exceptions. This allows you to fall back to calling the original function or logging exceptions. Function has the following signature `exception_handler(exception: Exception, function: Callable, args: List, kwargs: Dict) -> Any`. If using this handler, reraise the exception in the handler to stop execution of the function. All return results will be used even if `None`. If handler not defined, it will raise the exception and not call the original function.
 - support_cluster - Set to False to disable the `{` prefix on the keys. This is NOT recommended. See below for more info.
+- active - Optional flag to disable the caching completly for troubleshooting/lower environments
+
 
 ## Limitations and things to know
 Arguments and return types must be JSON serializable by default. You can override the serializer, but be careful with using Pickle. Make sure you understand the security risks. Pickle should not be used with untrusted values.
