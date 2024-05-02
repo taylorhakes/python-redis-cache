@@ -2,6 +2,13 @@
 
 
 
+## v3.2.0 (2024-05-02)
+
+### Feature
+
+* feat(active-flag): added the ability to disable the cache ([`1d27b9a`](https://github.com/taylorhakes/python-redis-cache/commit/1d27b9a9b1c51664b48986e63057cebe63000e39))
+
+
 ## v3.1.0 (2024-03-21)
 
 ### Feature
