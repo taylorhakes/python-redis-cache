@@ -365,6 +365,9 @@ def test_get_args(cache):
     def fn6(a, b, /, c, d):
         pass
 
+    def fn7(a, b, c=3, *, d):
+        pass
+
     assert get_args(fn1, (1,2), {}) == dict(a=1, b=2)
     assert get_args(fn1, [], dict(a=1, b=2)) == dict(a=1, b=2)
     assert get_args(fn1, [1], dict(b=2)) == dict(a=1, b=2)
@@ -373,6 +376,7 @@ def test_get_args(cache):
     assert get_args(fn4, [1, 2, 3, 4], dict(d=5, f=6, g=7, h=8)) == dict(a=1, c=[2, 3, 4], d=5, e=dict(f=6, g=7, h=8))
     assert get_args(fn5, [], dict(d=5, f=6, g=7, h=8)) == dict(d=5, e=dict(f=6, g=7, h=8))
     assert get_args(fn6, [1, 2, 3], dict(d=4)) == dict(a=1, b=2, c=3, d=4)
+    assert get_args(fn7, [1, 2], dict(d=4)) == dict(a=1, b=2, c=3, d=4)
 
 # Simulate the environment where redis is not available
 # Only test the CacheDecorator since the exception handling should be done inside the decorator
