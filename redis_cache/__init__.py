@@ -1,7 +1,7 @@
 from functools import wraps
 from json import dumps, loads
 from base64 import b64encode
-from inspect import signature
+from inspect import signature, Parameter
 
 def compact_dump(value):
     return dumps(value, separators=(',', ':'), sort_keys=True)
@@ -14,7 +14,7 @@ def get_args(fn, args, kwargs):
     them both the same. Otherwise there would be different caching for add(1, 2) and add(arg1=1, arg2=2)
     """
     arg_sig = signature(fn)
-    standard_args = [param.name for param in arg_sig.parameters.values() if param.kind is param.POSITIONAL_OR_KEYWORD]
+    standard_args = [param.name for param in arg_sig.parameters.values() if param.kind is param.POSITIONAL_OR_KEYWORD or param.kind is param.POSITIONAL_ONLY]
     allowed_kwargs = {param.name for param in arg_sig.parameters.values() if param.kind is param.POSITIONAL_OR_KEYWORD or param.kind is param.KEYWORD_ONLY}
     variable_args = [param.name for param in arg_sig.parameters.values() if param.kind is param.VAR_POSITIONAL]
     variable_kwargs = [param.name for param in arg_sig.parameters.values() if param.kind is param.VAR_KEYWORD]
@@ -43,6 +43,10 @@ def get_args(fn, args, kwargs):
                 if vkwargs_name not in parsed_args:
                     parsed_args[vkwargs_name] = {}
                 parsed_args[vkwargs_name][key] = value
+
+    for param in arg_sig.parameters.values():
+        if param.name not in parsed_args and param.default is not Parameter.empty:
+            parsed_args[param.name] = param.default
 
     return parsed_args
 

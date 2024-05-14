@@ -6,7 +6,7 @@ this_directory = path.abspath(path.dirname(__file__))
 with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-__version__ = "3.2.0"
+__version__ = "4.0.0"
 
 setup(
     name='python-redis-cache',
@@ -17,7 +17,7 @@ setup(
     url='http://github.com/taylorhakes/python-redis-cache',
     author='Taylor Hakes',
     license='MIT',
-    python_requires='>=3.6',
+    python_requires='>=3.8',
     packages=find_packages(),
     install_requires=['redis'],
     setup_requires=['pytest-runner==5.3.1'],
