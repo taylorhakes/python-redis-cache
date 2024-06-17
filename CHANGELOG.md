@@ -2,6 +2,15 @@
 
 
 
+## v4.0.0 (2024-06-17)
+
+### Breaking
+
+* feat(cache): support caching functions with positional-only arguments
+
+BREAKING CHANGE: requires Python version &gt;= 3.8 ([`68f00ab`](https://github.com/taylorhakes/python-redis-cache/commit/68f00abeff87672b2ae4a04106ef7fc91f6ce86d))
+
+
 ## v3.2.0 (2024-05-02)
 
 ### Feature
