@@ -141,7 +141,7 @@ To cache instance/class methods it may require a little refactoring. This is bec
 serialized to JSON without custom serializers. The best way to handle caching class methods is to make a 
 more specific static method to cache (or global function). For instance:
 
-Instead of this:
+Don't do this:
 ```python
 class MyClass:
     @cache.cache()
