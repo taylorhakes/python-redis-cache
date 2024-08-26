@@ -23,5 +23,5 @@ jobs:
         PY_VERSION: ${{ matrix.python-version }}
         REDIS_VERSION: ${{ matrix.redis-version }}
       run: |
-        docker-compose run --rm test
+        docker compose run --rm test
       
