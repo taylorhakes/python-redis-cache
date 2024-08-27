@@ -135,3 +135,32 @@ cache = RedisCache(redis_client, support_cluster=False)
 # Changes keys to the following
 key = f"rc:{fn.__module__}.{fn.__qualname__}:{b64encode(custom_serialized_args).decode('utf-8')}"
 ```
+
+### Instance/Class methods
+To cache instance/class methods it may require a little refactoring. This is because the `self`/`cls` cannot be 
+serialized to JSON without custom serializers. The best way to handle caching class methods is to make a 
+more specific static method to cache (or global function). For instance:
+
+Don't do this:
+```python
+class MyClass:
+    @cache.cache()
+    def my_func(self, arg1, arg2):
+        return self.some_arg + arg1 + arg2
+```
+
+Do this instead:
+```python
+class MyClass:
+    def my_func(self, arg1, arg2):
+        return self.my_cached_method(self.some_arg, arg1, arg2)
+    
+    @cache.cache()
+    @staticmethod
+    def my_cached_method(some_arg, arg1, arg2):
+        return some_arg + arg1 + arg2
+```
+
+If you aren't using `self`/`cls` in the method, you can use the `@staticmethod` decorator to make it a static method. 
+If you must use `self`/`cls` in your cached method and can't use the options suggested above, you will need to create 
+a custom JSON key serializer for the `self`/`cls` object or you can use the Pickle serializer (which isn't recommended).
