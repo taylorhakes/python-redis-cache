@@ -2,6 +2,33 @@
 
 
 
+## v4.0.1 (2024-08-27)
+
+### Build
+
+* build(fix): Change docker-compose to docker compose ([`e701a9e`](https://github.com/taylorhakes/python-redis-cache/commit/e701a9e482a13221535e9c404258f6af7903df08))
+
+### Documentation
+
+* docs: updated wording on instance docs ([`ca65f4e`](https://github.com/taylorhakes/python-redis-cache/commit/ca65f4e515aa45c27b88972d76c416bdaf9d3ed3))
+
+* docs: add class/instance method documentation ([`027344d`](https://github.com/taylorhakes/python-redis-cache/commit/027344d3a62655a82b8be8df25f93a400b217c2d))
+
+### Fix
+
+* fix(cache): support for unpassed default args (#39)
+
+* feat(cache): support caching functions with positional-only arguments
+
+BREAKING CHANGE: requires Python version &gt;= 3.8
+
+* fix(cache): cache params with defaults not passed as args
+
+---------
+
+Co-authored-by: Taylor Hakes &lt;taylorhakes@users.noreply.github.com&gt; ([`4432b14`](https://github.com/taylorhakes/python-redis-cache/commit/4432b14ffbaaee0aa7142b694c853d518671bb88))
+
+
 ## v4.0.0 (2024-06-17)
 
 ### Breaking
