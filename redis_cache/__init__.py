@@ -1,3 +1,4 @@
+import asyncio
 from functools import wraps
 from json import dumps, loads
 from base64 import b64encode
@@ -207,6 +208,43 @@ class CacheDecorator:
         self.namespace = self.namespace or f'{fn.__module__}.{fn.__qualname__}'
         self.keys_key = f'{self.get_full_prefix()}:keys'
         self.original_fn = fn
+
+        if asyncio.iscoroutinefunction(fn):
+
+            @wraps(fn)
+            async def inner_async(*args, **kwargs):
+                nonlocal self
+                if not self.active:
+                    return await fn(*args, **kwargs)
+                key = self.get_key(args, kwargs)
+                result = None
+
+                exception_handled = False
+                try:
+                    result = self.client.get(key)
+                except Exception as e:
+                    if self.exception_handler:
+                        exception_handled = True
+                        parsed_result = self.exception_handler(
+                            e, self.original_fn, args, kwargs
+                        )
+                if result:
+                    parsed_result = self.deserializer(result)
+                elif not exception_handled:
+                    parsed_result = await fn(*args, **kwargs)
+                    result_serialized = self.serializer(parsed_result)
+                    get_cache_lua_fn(self.client)(
+                        keys=[key, self.keys_key],
+                        args=[result_serialized, self.ttl, self.limit],
+                    )
+
+                return parsed_result
+
+            inner_async.invalidate = self.invalidate
+            inner_async.invalidate_all = self.invalidate_all
+            inner_async.get_full_prefix = self.get_full_prefix
+            inner_async.instance = self
+            return inner_async
 
         @wraps(fn)
         def inner(*args, **kwargs):

@@ -70,6 +70,17 @@ def test_ttl(cache):
     assert 7 == r_1 == r_2 == r_3
     assert v_1 == v_2 != v_3
 
+
+async def test_async(cache):
+    @cache.cache()
+    async def async_fn(arg1):
+        return arg1
+
+    r1 = await async_fn(1)
+    r2 = await async_fn(1)
+    assert r1 == r2
+
+
 def test_inactive_cache(inactive_cache):
     @inactive_cache.cache(ttl=2)
     def add_ttl(arg1, arg2):
@@ -415,5 +426,3 @@ def test_basic_check_no_redis(no_redis_cache):
 
     assert 7 == r_3_4 == r_3_4_cached == r_3_4_cached_kwargs == r_3_4_cached_mix
     assert 10 == r_5_5 != r_3_4
-
-
