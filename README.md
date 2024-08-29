@@ -38,6 +38,18 @@ my_func.invalidate(1, 2)
 
 # Invalidate all values for function
 my_func.invalidate_all()
+
+# Also works with async functions
+@cache.cache()
+async def my_async_func(arg1, arg2):
+    return some_expensive_operation(arg1, arg2)
+
+async def run_async_funcs():
+    # First call will be slow
+    await my_async_func(1, 2)
+
+    # Second call will be fast since it's pulled from the cache
+    await my_async_func(1, 2)
 ```
 
 ## API
@@ -127,7 +139,7 @@ key = f"{{rc:{fn.__module__}.{fn.__qualname__}}}:{b64encode(custom_serialized_ar
 #### Specifying `support_cluster=False`- This will disable the `{` prefix on the keys
 This option is NOT recommended because this library will no longer work with redis clusters. Often times people/companies
 will start not using cluster mode and then will migrate to using cluster. This option will make that migration require
-a lot of work. If you know for sure you will never use a redis cluster, then you can enable this option. 
+a lot of work. If you know for sure you will never use a redis cluster, then you can enable this option.
 If you are unsure, don't use this option. There is not any benefit.
 ```python
 cache = RedisCache(redis_client, support_cluster=False)
@@ -137,8 +149,8 @@ key = f"rc:{fn.__module__}.{fn.__qualname__}:{b64encode(custom_serialized_args).
 ```
 
 ### Instance/Class methods
-To cache instance/class methods it may require a little refactoring. This is because the `self`/`cls` cannot be 
-serialized to JSON without custom serializers. The best way to handle caching class methods is to make a 
+To cache instance/class methods it may require a little refactoring. This is because the `self`/`cls` cannot be
+serialized to JSON without custom serializers. The best way to handle caching class methods is to make a
 more specific static method to cache (or global function). For instance:
 
 Don't do this:
@@ -154,13 +166,13 @@ Do this instead:
 class MyClass:
     def my_func(self, arg1, arg2):
         return self.my_cached_method(self.some_arg, arg1, arg2)
-    
+
     @cache.cache()
     @staticmethod
     def my_cached_method(some_arg, arg1, arg2):
         return some_arg + arg1 + arg2
 ```
 
-If you aren't using `self`/`cls` in the method, you can use the `@staticmethod` decorator to make it a static method. 
-If you must use `self`/`cls` in your cached method and can't use the options suggested above, you will need to create 
+If you aren't using `self`/`cls` in the method, you can use the `@staticmethod` decorator to make it a static method.
+If you must use `self`/`cls` in your cached method and can't use the options suggested above, you will need to create
 a custom JSON key serializer for the `self`/`cls` object or you can use the Pickle serializer (which isn't recommended).
