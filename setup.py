@@ -21,5 +21,5 @@ setup(
     packages=find_packages(),
     install_requires=['redis'],
     setup_requires=['pytest-runner==5.3.1'],
-    tests_require=['pytest==6.2.5', 'redis==4.4.4'],
+    tests_require=['pytest==8.3.2', 'pytest-asyncio==0.24.0', 'redis==4.4.4'],
 )
