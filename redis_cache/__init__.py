@@ -3,8 +3,10 @@ from json import dumps, loads
 from base64 import b64encode
 from inspect import signature, Parameter
 
+
 def compact_dump(value):
     return dumps(value, separators=(',', ':'), sort_keys=True)
+
 
 def get_args(fn, args, kwargs):
     """
@@ -14,10 +16,14 @@ def get_args(fn, args, kwargs):
     them both the same. Otherwise there would be different caching for add(1, 2) and add(arg1=1, arg2=2)
     """
     arg_sig = signature(fn)
-    standard_args = [param.name for param in arg_sig.parameters.values() if param.kind is param.POSITIONAL_OR_KEYWORD or param.kind is param.POSITIONAL_ONLY]
-    allowed_kwargs = {param.name for param in arg_sig.parameters.values() if param.kind is param.POSITIONAL_OR_KEYWORD or param.kind is param.KEYWORD_ONLY}
-    variable_args = [param.name for param in arg_sig.parameters.values() if param.kind is param.VAR_POSITIONAL]
-    variable_kwargs = [param.name for param in arg_sig.parameters.values() if param.kind is param.VAR_KEYWORD]
+    standard_args = [param.name for param in arg_sig.parameters.values(
+    ) if param.kind is param.POSITIONAL_OR_KEYWORD or param.kind is param.POSITIONAL_ONLY]
+    allowed_kwargs = {param.name for param in arg_sig.parameters.values(
+    ) if param.kind is param.POSITIONAL_OR_KEYWORD or param.kind is param.KEYWORD_ONLY}
+    variable_args = [param.name for param in arg_sig.parameters.values(
+    ) if param.kind is param.VAR_POSITIONAL]
+    variable_kwargs = [param.name for param in arg_sig.parameters.values(
+    ) if param.kind is param.VAR_KEYWORD]
     parsed_args = {}
 
     if standard_args or variable_args:
@@ -32,7 +38,6 @@ def get_args(fn, args, kwargs):
                         parsed_args[vargs_name] = []
 
                     parsed_args[vargs_name].append(arg)
-
 
     if kwargs:
         for key, value in kwargs.items():
@@ -103,7 +108,7 @@ def chunks(iterable, n):
 
 
 class RedisCache:
-    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, support_cluster=True, exception_handler=None, active:bool=True):
+    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, support_cluster=True, exception_handler=None, active: bool = True):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
@@ -148,10 +153,12 @@ class RedisCache:
                 fn_and_args = fns_with_args[i]
                 fn = fn_and_args['fn']
                 args = fn_and_args['args'] if 'args' in fn_and_args else []
-                kwargs = fn_and_args['kwargs'] if 'kwargs' in fn_and_args else {}
+                kwargs = fn_and_args['kwargs'] if 'kwargs' in fn_and_args else {
+                }
                 result = fn.instance.original_fn(*args, **kwargs)
                 result_serialized = self.serializer(result)
-                get_cache_lua_fn(self.client)(keys=[keys[i], fn.instance.keys_key], args=[result_serialized, fn.instance.ttl, fn.instance.limit], client=pipeline)
+                get_cache_lua_fn(self.client)(keys=[keys[i], fn.instance.keys_key], args=[
+                    result_serialized, fn.instance.ttl, fn.instance.limit], client=pipeline)
             else:
                 result = self.deserializer(result)
             deserialized_results.append(result)
@@ -160,8 +167,9 @@ class RedisCache:
             pipeline.execute()
         return deserialized_results
 
+
 class CacheDecorator:
-    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, ttl=0, limit=0, namespace=None, support_cluster=True, exception_handler=None, active:bool=True):
+    def __init__(self, redis_client, prefix="rc", serializer=compact_dump, deserializer=loads, key_serializer=None, ttl=0, limit=0, namespace=None, support_cluster=True, exception_handler=None, active: bool = True):
         self.client = redis_client
         self.prefix = prefix
         self.serializer = serializer
@@ -174,8 +182,7 @@ class CacheDecorator:
         self.support_cluster = support_cluster
         self.keys_key = None
         self.original_fn = None
-        self.active=active
-
+        self.active = active
 
     def get_full_prefix(self):
         if self.support_cluster:
@@ -224,14 +231,22 @@ class CacheDecorator:
                 if self.exception_handler:
                     # This allows people to handle failures in cache lookups
                     exception_handled = True
-                    parsed_result = self.exception_handler(e, self.original_fn, args, kwargs)
+                    parsed_result = self.exception_handler(
+                        e, self.original_fn, args, kwargs)
             if result:
                 parsed_result = self.deserializer(result)
             elif not exception_handled:
-                parsed_result = fn(*args, **kwargs)
-                result_serialized = self.serializer(parsed_result)
-                get_cache_lua_fn(self.client)(keys=[key, self.keys_key], args=[result_serialized, self.ttl, self.limit])
-
+                try:
+                    parsed_result = fn(*args, **kwargs)
+                    result_serialized = self.serializer(parsed_result)
+                    get_cache_lua_fn(self.client)(keys=[key, self.keys_key], args=[
+                        result_serialized, self.ttl, self.limit])
+                except Exception as e:
+                    if self.exception_handler:
+                        parsed_result = self.exception_handler(
+                            e, self.original_fn, args, kwargs)
+                    else:
+                        raise e
             return parsed_result
 
         inner.invalidate = self.invalidate
@@ -248,6 +263,7 @@ class CacheDecorator:
         pipe.execute()
 
     def invalidate_all(self, *args, **kwargs):
-        chunks_gen = chunks(self.client.scan_iter(f'{self.get_full_prefix()}:*'), 500)
+        chunks_gen = chunks(self.client.scan_iter(
+            f'{self.get_full_prefix()}:*'), 500)
         for keys in chunks_gen:
             self.client.delete(*keys)
