@@ -10,12 +10,12 @@ import pytest
 import zlib
 
 
-redis_host = "redis-test-host"
+redis_host = "localhost"
 client = StrictRedis(host=redis_host, decode_responses=True)
 client_no_decode = StrictRedis(host=redis_host)
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def clear_cache(request):
     client.flushall()
 
