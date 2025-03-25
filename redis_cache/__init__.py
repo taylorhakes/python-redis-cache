@@ -64,7 +64,9 @@ end
 local limit = tonumber(ARGV[3])
 if limit > 0 then
   local time_parts = redis.call('TIME')
-  local time = tonumber(time_parts[1] .. '.' .. time_parts[2])
+  -- TIME returns [seconds, microseconds] (as strings), so parse each
+  -- and add together to get the full timestamp
+  local time = tonumber(time_parts[1]) + (tonumber(time_parts[2]) / 1000000)
   redis.call('ZADD', KEYS[2], time, KEYS[1])
   local count = tonumber(redis.call('ZCOUNT', KEYS[2], '-inf', '+inf'))
   local over = count - limit
