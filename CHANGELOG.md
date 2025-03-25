@@ -2,6 +2,13 @@
 
 
 
+## v4.0.2 (2025-03-25)
+
+### Fix
+
+* fix(lua): Fix time parsing in limit cache ([`b7d0605`](https://github.com/taylorhakes/python-redis-cache/commit/b7d060521b673a49a90bd79c8c67d8cc4c2df34f))
+
+
 ## v4.0.1 (2024-08-27)
 
 ### Build
